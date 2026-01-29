@@ -1,4 +1,6 @@
 streamlit>=1.30.0
+torch
+google-genai
 numpy
 scipy
 networkx
@@ -6,6 +8,5 @@ colorama
 matplotlib
 plotly
 watchdog
-google-genai
 requests
-torch --index-url https://download.pytorch.org/whl/cpu
+torch_geometric
