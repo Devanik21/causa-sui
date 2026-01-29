@@ -8,5 +8,3 @@ colorama
 matplotlib
 plotly
 watchdog
-requests
-torch_geometric
