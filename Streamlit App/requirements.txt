@@ -1,6 +1,10 @@
+streamlit
 torch
-requests
-watchdog
 google-genai
-python-dotenv
-streamlit>=1.37.0
+numpy
+scipy
+networkx
+colorama
+matplotlib
+plotly
+regex
