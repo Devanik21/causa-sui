@@ -4,7 +4,6 @@ google-genai
 numpy
 scipy
 networkx
-colorama
 matplotlib
 plotly
 
