@@ -1,4 +1,6 @@
 streamlit>=1.30.0
+# --index-url forces pip to look for the CPU-only wheels first
+--index-url https://download.pytorch.org
 torch
 google-genai
 numpy
