@@ -1,0 +1,5 @@
+torch
+requests
+watchdog
+google-generativeai
+python-dotenv
