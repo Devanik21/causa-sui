@@ -1,8 +1,4 @@
---index-url https://download.pytorch.org/whl/cpu
---extra-index-url https://pypi.org/simple
-torch
 streamlit>=1.30.0
-google-genai
 numpy
 scipy
 networkx
@@ -10,3 +6,6 @@ colorama
 matplotlib
 plotly
 watchdog
+google-genai
+requests
+torch --index-url https://download.pytorch.org/whl/cpu
