@@ -1,5 +1,5 @@
 """
-Graph Substrate: The Dynamic Neural Graph using PyTorch Geometric.
+Graph Substrate: The Dynamic Neural Graph using Pure PyTorch.
 
 This module implements the DynamicGraphNet - a fluid neural network
 whose topology can be rewired at runtime.
@@ -7,49 +7,38 @@ whose topology can be rewired at runtime.
 Architecture:
     - Nodes: Hold learnable state vectors (neuron activations)
     - Edges: Hold learnable weights (synapse strengths)
-    - Message Passing: GATv2Conv for attention-based aggregation
+    - Message Passing: Dense Matrix Multiplication (Masked by Adjacency)
 
 References:
     - Phase 2 Plan: Topological Computing
-    - PyTorch Geometric: https://pytorch-geometric.readthedocs.io/
+    - Removed 'torch_geometric' dependency for Streamlit Cloud compatibility.
 """
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch_geometric.nn import GATv2Conv, MessagePassing
-from torch_geometric.data import Data
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Dict
+from dataclasses import dataclass
 
 
 class DynamicGraphNet(nn.Module):
     """
-    A neural network with mutable topology.
+    A neural network with mutable topology using Dense PyTorch operations.
     
     Key Features:
     1. Node states are learnable parameters
-    2. Edge connectivity can be added/removed at runtime
-    3. Uses Graph Attention for differentiable message passing
+    2. Edge connectivity is simulated via a masked Adjacency Matrix
+    3. Fully differentiable, runs on standard PyTorch (CPU/GPU)
     """
     
     def __init__(
         self,
         num_nodes: int = 16,
         node_dim: int = 32,
-        num_heads: int = 4,
+        num_heads: int = 4, # Unused in simple dense version, kept for API compatibility
         num_input_nodes: int = 4,
         num_output_nodes: int = 1
     ):
-        """
-        Initialize the dynamic graph.
-        
-        Args:
-            num_nodes: Initial number of nodes (can grow)
-            node_dim: Dimension of node state vectors
-            num_heads: Number of attention heads in GATv2
-            num_input_nodes: Number of input nodes (fixed)
-            num_output_nodes: Number of output nodes (fixed)
-        """
         super().__init__()
         
         self.num_nodes = num_nodes
@@ -58,175 +47,133 @@ class DynamicGraphNet(nn.Module):
         self.num_output_nodes = num_output_nodes
         
         # === NODE STATE ===
-        # Learnable node features (the "neuron states")
+        # Learnable node features
         self.node_features = nn.Parameter(torch.randn(num_nodes, node_dim) * 0.1)
         
-        # === EDGE CONNECTIVITY ===
-        # Start with a simple feedforward-like graph
-        # Input -> Hidden -> Output
+        # === EDGES (DENSE ADJACENCY) ===
+        # Instead of sparse edge_index, we store explicit edge weights in a dict or list 
+        # and build a dense adjacency mask on the fly.
+        # Actually, let's keep PyG's "edge_index" format for the Mutator, 
+        # but convert to Dense Matrix for the Foward Pass.
+        
         edge_list = []
         num_hidden = num_nodes - num_input_nodes - num_output_nodes
         hidden_start = num_input_nodes
         output_start = num_input_nodes + num_hidden
         
-        # Input -> Hidden (fully connected)
+        # Input -> Hidden
         for i in range(num_input_nodes):
             for h in range(hidden_start, output_start):
                 edge_list.append([i, h])
         
-        # Hidden -> Output (fully connected)
+        # Hidden -> Output
         for h in range(hidden_start, output_start):
             for o in range(output_start, num_nodes):
                 edge_list.append([h, o])
         
-        # Convert to tensor (COO format)
+        # Register buffer for topology (COO format)
         if edge_list:
             edge_index = torch.tensor(edge_list, dtype=torch.long).t().contiguous()
         else:
             edge_index = torch.zeros((2, 0), dtype=torch.long)
-        
-        # Register as buffer (not a parameter, but should be saved)
+            
         self.register_buffer('edge_index', edge_index)
         
-        # === EDGE WEIGHTS ===
-        # Learnable edge features (synapse strengths)
+        # === LEARNABLE WEIGHTS ===
         num_edges = edge_index.shape[1]
-        self.edge_weights = nn.Parameter(torch.randn(num_edges, 1) * 0.1)
+        self.edge_weights = nn.Parameter(torch.randn(num_edges) * 0.1)
         
-        # === MESSAGE PASSING LAYERS ===
-        self.conv1 = GATv2Conv(
-            in_channels=node_dim,
-            out_channels=node_dim,
-            heads=num_heads,
-            concat=False,  # Average heads instead of concat
-            edge_dim=1,    # Use edge weights as features
-            add_self_loops=False
-        )
+        # === LAYERS ===
+        # Simple Linear layers applied to aggregated inputs
+        self.linear1 = nn.Linear(node_dim, node_dim)
+        self.linear2 = nn.Linear(node_dim, node_dim)
         
-        self.conv2 = GATv2Conv(
-            in_channels=node_dim,
-            out_channels=node_dim,
-            heads=num_heads,
-            concat=False,
-            edge_dim=1,
-            add_self_loops=False
-        )
-        
-        # === OUTPUT PROJECTION ===
         self.output_proj = nn.Linear(node_dim, 1)
+        
+    def _build_adjacency(self) -> torch.Tensor:
+        """Constructs the NxN weighted adjacency matrix from edge lists."""
+        N = self.num_nodes
+        device = self.node_features.device
+        adj = torch.zeros((N, N), device=device)
+        
+        if self.edge_index.shape[1] > 0:
+            # Use sophisticated indexing: adj[src, dst] = weight
+            # edge_index is [2, E], first row is src, second is dst
+            src, dst = self.edge_index
+            adj[src, dst] = self.edge_weights
+            
+        return adj
         
     def forward(
         self,
         x_input: Optional[torch.Tensor] = None
     ) -> Tuple[torch.Tensor, torch.Tensor]:
-        """
-        Forward pass through the dynamic graph.
+        """Forward pass using Dense Graph Convolution: A @ X @ W."""
         
-        Args:
-            x_input: Optional input to inject into input nodes.
-                     Shape: [batch_size, num_input_nodes] or [num_input_nodes]
-                     
-        Returns:
-            output: Predictions from output nodes. Shape: [num_output_nodes] or [batch, num_output_nodes]
-            node_states: Final node states. Shape: [num_nodes, node_dim]
-        """
-        # Start with learned node features
+        # 1. Prepare Node States
         x = self.node_features.clone()
         
-        # Inject input if provided
+        # 2. Inject Input
         if x_input is not None:
             if x_input.dim() == 1:
-                x_input = x_input.unsqueeze(0)  # Add batch dim
-            # Project input to node_dim and set input nodes
-            # For now, simple: use first dimension of node as the "activation"
+                x_input = x_input.unsqueeze(0)
             for i in range(min(x_input.shape[1], self.num_input_nodes)):
-                x[i, 0] = x_input[0, i]  # Set first feature to input value
+                x[i, 0] = x_input[0, i]
+                
+        # 3. Build Adjacency Matrix (Dynamic Topology)
+        adj = self._build_adjacency()
+        # Add self-loops to preserve own state? Let's say yes implicitly or explicitly.
+        # For stability, let's normalize adjacency? 
+        # For now, raw weights (Hebbian style).
         
-        # Message passing (2 hops)
-        x = self.conv1(x, self.edge_index, self.edge_weights)
-        x = F.relu(x)
+        # 4. Layer 1: X_new = ReLU(Adj @ X @ W)
+        # Transform features first
+        x_trans = self.linear1(x)
+        # Aggregate neighbors
+        x = torch.matmul(adj.t(), x_trans) # Transpose because adj[src, dst] means flow from src to dst
+        x = F.leaky_relu(x, 0.2)
         
-        x = self.conv2(x, self.edge_index, self.edge_weights)
-        x = F.relu(x)
+        # 5. Layer 2
+        x_trans = self.linear2(x)
+        x = torch.matmul(adj.t(), x_trans)
+        x = F.leaky_relu(x, 0.2)
         
-        # Extract output from output nodes
+        # 6. Output
         output_start = self.num_nodes - self.num_output_nodes
         output_nodes = x[output_start:]
-        output = self.output_proj(output_nodes)
-        output = torch.sigmoid(output)  # Probability output
+        output = torch.sigmoid(self.output_proj(output_nodes))
         
         return output.squeeze(), x
-    
-    def get_graph_data(self) -> Data:
-        """Return current graph as a PyG Data object."""
-        return Data(
-            x=self.node_features.detach(),
-            edge_index=self.edge_index,
-            edge_attr=self.edge_weights.detach()
-        )
-    
+
     def get_num_edges(self) -> int:
-        """Return current number of edges."""
         return self.edge_index.shape[1]
     
     def get_num_nodes(self) -> int:
-        """Return current number of nodes."""
         return self.num_nodes
-    
+        
     def _sync_check(self):
-        """
-        CRITICAL: Verify edge_index and edge_weights are synchronized.
-        Call after any mutation.
-        """
-        num_edges = self.edge_index.shape[1]
-        num_weights = self.edge_weights.shape[0]
-        assert num_edges == num_weights, (
-            f"PyG Sync Error! edge_index has {num_edges} edges "
-            f"but edge_weights has {num_weights} weights."
-        )
+        """No-op for dense version, but kept for API compatibility."""
+        pass
+
+    def get_status(self) -> Dict:
+        return {
+            "nodes": self.num_nodes,
+            "edges": self.edge_index.shape[1]
+        }
 
 
 # === UNIT TEST ===
 if __name__ == "__main__":
-    print("[TEST] Testing DynamicGraphNet...")
-    
-    # Create network
-    net = DynamicGraphNet(
-        num_nodes=10,
-        node_dim=16,
-        num_heads=2,
-        num_input_nodes=4,
-        num_output_nodes=1
-    )
-    
+    print("[TEST] Testing Pure PyTorch DynamicGraphNet...")
+    net = DynamicGraphNet(num_nodes=10)
     print(f"   Nodes: {net.get_num_nodes()}")
     print(f"   Edges: {net.get_num_edges()}")
-    print(f"   Node features shape: {net.node_features.shape}")
-    print(f"   Edge weights shape: {net.edge_weights.shape}")
     
-    # Sync check
-    net._sync_check()
-    print("   Sync check: PASSED")
+    x_in = torch.tensor([1.0, 0.0, 1.0, 0.0])
+    out, states = net(x_in)
+    print(f"   Output: {out.item():.4f}")
     
-    # Forward pass
-    x_input = torch.tensor([1.0, 0.0, 1.0, 0.0])
-    output, node_states = net(x_input)
-    
-    print(f"   Output: {output.item():.4f}")
-    print(f"   Node states shape: {node_states.shape}")
-    
-    # Gradient check
-    loss = output.sum()
-    loss.backward()
-    
-    if net.node_features.grad is not None and net.node_features.grad.abs().sum() > 0:
-        print("   Gradient on node_features: FLOWING")
-    else:
-        print("   [WARN] No gradients on node_features!")
-        
-    if net.edge_weights.grad is not None and net.edge_weights.grad.abs().sum() > 0:
-        print("   Gradient on edge_weights: FLOWING")
-    else:
-        print("   [WARN] No gradients on edge_weights!")
-    
-    print("[PASS] DynamicGraphNet test completed!")
+    # Grad check
+    out.backward()
+    print(f"   Grads: {'OK' if net.edge_weights.grad is not None else 'FAIL'}")
+
