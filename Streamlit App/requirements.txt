@@ -1,7 +1,7 @@
-streamlit>=1.30.0
-# --index-url forces pip to look for the CPU-only wheels first
---index-url https://download.pytorch.org
+--index-url https://download.pytorch.org/whl/cpu
+--extra-index-url https://pypi.org/simple
 torch
+streamlit>=1.30.0
 google-genai
 numpy
 scipy
