@@ -60,15 +60,8 @@ class MonadConfig:
     pain_sensitivity: float = 10.0 # How strongly to react to EI drop
     surprise_threshold: float = 0.5  # High surprise triggers slow loop
     
-    # === METABOLIC RHYTHMS (Biological Dynamics) ===
-    # These create natural fluctuations - the "breathing" of the system
-    metabolic_base_rate: float = 0.1      # Base metabolic frequency (Hz)
-    neural_temperature: float = 0.05       # Stochastic noise amplitude
-    spontaneous_rate: float = 0.01         # Probability of spontaneous firing
-    circadian_amplitude: float = 0.1       # Amplitude of slow oscillations
-    
     # Loop frequencies
-    slow_loop_interval: int = 1  # Run EI check every step (live breathing)
+    slow_loop_interval: int = 100  # Run EI check every N steps
 
 
 @dataclass  
@@ -121,8 +114,7 @@ class MonadState:
         # With sensitivity=50, a 0.02 drop below threshold = 1.0 Pain
         raw_pain = delta * sensitivity
             
-        # Allow pain to exceed 1.0 (Super-Pain) to show true depth of distress
-        return max(0.0, raw_pain)
+        return min(1.0, max(0.0, raw_pain))
 
 
 class DivineMonad(nn.Module):
@@ -179,10 +171,6 @@ class DivineMonad(nn.Module):
         self.state.num_nodes = self.graph.get_num_nodes()
         self.state.num_edges = self.graph.get_num_edges()
         
-        # === METABOLIC CLOCK (for breathing dynamics) ===
-        self.register_buffer('metabolic_phase', torch.tensor(0.0))
-        self.register_buffer('circadian_phase', torch.tensor(0.0))
-        
         # Action log for VoiceBox
         self.action_log: List[str] = []
         
@@ -207,104 +195,44 @@ class DivineMonad(nn.Module):
         self.state.prediction_error = 0.0
         self.action_log = ["STATE_RESET"]
 
-    def _compute_ei_proxy(self, num_samples: int = 32) -> Tuple[float, float, float]:
+    def _compute_ei_proxy(self) -> Tuple[float, float, float]:
         """
-        Compute TRUE Effective Information using Erik Hoel's TPM definition.
+        Compute Effective Information (simplified proxy).
         
-        EI = H(<TPM_i>) - <H(TPM_i)>
-        
-        Where:
-        - H(<TPM_i>) = Determinism = Entropy of average output distribution
-        - <H(TPM_i)> = Degeneracy = Average entropy of individual output distributions
-        
-        For a neural network:
-        1. Sample K random inputs (maximum entropy intervention)
-        2. Record the output activation pattern for each
-        3. Build empirical transition probability matrix
-        4. Compute Determinism (entropy of average output)
-        5. Compute Degeneracy (average entropy of rows)
-        6. EI = Determinism - Degeneracy
-        
-        Reference: Erik Hoel - "When the Map is Better Than the Territory"
+        Full EI calculation is expensive. We use a proxy based on
+        graph connectivity and node activation variance.
         
         Returns:
-            (ei_score, determinism, degeneracy)
+            (ei_score, ei_micro, ei_macro)
         """
         with torch.no_grad():
-            n_nodes = self.graph.get_num_nodes()
+            # 1. EI_MICRO: Node activation variance
+            # We add a small baseline and scale to ensure non-zero if graph is "alive"
+            node_var = self.graph.node_features.var(dim=0).mean().item()
+            ei_micro = min(1.0, 0.1 + node_var * 10)  # Baseline 0.1
             
-            # === 1. MAX-ENTROPY INTERVENTION ===
-            # Generate random inputs (uniform distribution = max entropy)
-            # This is the "do" operator - we intervene on all possible states equally
-            random_inputs = torch.rand(num_samples, self.config.num_input_nodes)
+            # 2. EI_MACRO: Connectivity structure (Concentration/Gini)
+            edge_weights = self.graph.edge_weights.abs()
+            if edge_weights.numel() > 1:
+                # Gini coefficient approximation
+                sorted_weights = edge_weights.flatten().sort()[0]
+                n = sorted_weights.numel()
+                index = torch.arange(1, n + 1, dtype=torch.float32)
+                gini = (2 * (index * sorted_weights).sum() - (n + 1) * sorted_weights.sum()) / (n * sorted_weights.sum() + 1e-8)
+                ei_macro = min(1.0, max(0.0, gini.item()))
+            elif edge_weights.numel() == 1:
+                ei_macro = 0.2 # Small bonus for having any connection
+            else:
+                ei_macro = 0.0
             
-            # === CRITICAL: Apply Metabolic "Life Force" to the test ===
-            # We must measure the EI of the *living* system, not just the static weights.
-            # Modulate inputs by the current metabolic phase (Heartbeat)
-            import math
-            metabolic_mod = 1.0 + self.config.circadian_amplitude * math.sin(self.metabolic_phase.item())
-            random_inputs = random_inputs * metabolic_mod
+            # 3. EI_SCORE: Emergence calculation
+            # If structure (macro) is significantly stronger than noise (micro), emergence is high.
+            # Base score is macro-driven, with a bonus for the macro/micro ratio
+            ratio = ei_macro / (ei_micro + 1e-8)
+            emergence_bonus = 0.5 if ratio > 1.2 else 0.0
+            ei_score = min(1.0, 0.5 * ei_macro + emergence_bonus)
             
-            # === 2. BUILD EMPIRICAL TPM (with Thermal Noise) ===
-            # For each input, propagate through network and record output activations
-            outputs = []
-            
-            # Save original node features to restore later (we are probing)
-            original_features = self.graph.node_features.clone()
-            
-            for i in range(num_samples):
-                # Inject thermal noise (Neural Stochasticity) for this sample
-                # This breaks symmetry and prevents "perfectly random" 0.5 outputs
-                noise = torch.randn_like(original_features) * self.config.neural_temperature
-                self.graph.node_features.data = original_features + noise
-                
-                x = random_inputs[i]
-                out, node_activations = self.graph(x)
-                # Use sigmoid to get activation probabilities
-                activations = torch.sigmoid(node_activations.flatten()[:n_nodes])
-                outputs.append(activations)
-            
-            # Restore state
-            self.graph.node_features.data = original_features
-            
-            # Stack into tensor: [num_samples, num_nodes]
-            output_tensor = torch.stack(outputs)
-            
-            # === 3. COMPUTE AVERAGE OUTPUT DISTRIBUTION ===
-            # This is the "macro" state - the coarse-grained average behavior
-            avg_output = output_tensor.mean(dim=0)  # [num_nodes]
-            
-            # === 4. COMPUTE DETERMINISM ===
-            # Entropy of the average output distribution
-            # For continuous activations, use binary entropy: H(p) = -p*log(p) - (1-p)*log(1-p)
-            eps = 1e-8
-            p = avg_output.clamp(eps, 1-eps)
-            # Binary entropy per node, then average
-            binary_entropy_avg = -((p * p.log()) + ((1-p) * (1-p).log()))
-            determinism = binary_entropy_avg.mean().item()
-            
-            # === 5. COMPUTE DEGENERACY ===
-            # Average entropy of each sample's output distribution
-            # This measures how "noisy" individual state transitions are
-            row_entropies = []
-            for row in output_tensor:
-                p = row.clamp(eps, 1-eps)
-                h = -((p * p.log()) + ((1-p) * (1-p).log())).mean()
-                row_entropies.append(h.item())
-            degeneracy = sum(row_entropies) / len(row_entropies)
-            
-            # === 6. EFFECTIVE INFORMATION ===
-            # EI = Determinism - Degeneracy
-            # High EI = System has high determinism (predictable macro behavior)
-            #           but low degeneracy (individual states are precise)
-            raw_ei = determinism - degeneracy
-            
-            # Normalize to nominal range but ALLOW FLUCTUATIONS beyond [0, 1]
-            # This ensures the graph is never perfectly flat
-            # Max theoretical EI for binary states is log(2) ≈ 0.693
-            ei_normalized = 0.5 + raw_ei * 2.0
-            
-        return ei_normalized, determinism, degeneracy
+        return ei_score, ei_micro, ei_macro
     
     def _get_self_state(self) -> SelfState:
         """Convert current MonadState to SelfState for introspection."""
@@ -451,12 +379,6 @@ class DivineMonad(nn.Module):
         """
         The Main Loop: Sense -> Introspect -> Perceive -> Process -> React -> Learn
         
-        Now includes METABOLIC BREATHING - natural fluctuations from:
-        1. Neural Stochasticity (thermal noise)
-        2. Circadian Rhythms (slow oscillations)  
-        3. Spontaneous Activity (random firing)
-        4. Metabolic Oscillations (heartbeat)
-        
         Args:
             x_input: Input tensor [num_input_nodes]
             target: Optional target for computing prediction error
@@ -467,60 +389,36 @@ class DivineMonad(nn.Module):
         """
         self.state.step_count += 1
         
-        # === 0. METABOLIC BREATHING (The Heartbeat) ===
-        # Update phase oscillators - these create natural rhythms
-        import math
-        self.metabolic_phase = (self.metabolic_phase + self.config.metabolic_base_rate) % (2 * math.pi)
-        self.circadian_phase = (self.circadian_phase + 0.01) % (2 * math.pi)  # Slow rhythm
-        
-        # Compute metabolic modulation (sinusoidal breathing)
-        metabolic_mod = 1.0 + self.config.circadian_amplitude * math.sin(self.metabolic_phase.item())
-        circadian_mod = 1.0 + 0.05 * math.sin(self.circadian_phase.item())  # Slower, smaller
-        
         # === 1. INTROSPECT ===
         self_state = self._get_self_state()
         introspection_vec = self.introspector(self_state)
         
         # === 2. PERCEIVE (Bind input with self-state) ===
-        # Modulate input by metabolic rhythm (breathing affects perception)
-        x_modulated = x_input * metabolic_mod
+        # Project input to node_dim, then element-wise bind
+        # For now, simple: inject introspection into first hidden node
         
-        # === 3. NEURAL STOCHASTICITY (Thermal Noise) ===
-        # Add small random perturbations - this is real neural dynamics
-        with torch.no_grad():
-            # Inject thermal noise into node features (neural stochasticity)
-            thermal_noise = torch.randn_like(self.graph.node_features) * self.config.neural_temperature
-            self.graph.node_features.data += thermal_noise
-            
-            # Spontaneous activity - random nodes fire with small probability
-            if torch.rand(1).item() < self.config.spontaneous_rate:
-                random_node = torch.randint(0, self.graph.node_features.shape[0], (1,)).item()
-                self.graph.node_features.data[random_node] += torch.randn(self.graph.node_features.shape[1]) * 0.1
+        # === 3. PROCESS ===
+        output, node_states = self.graph(x_input)
         
-        # === 4. PROCESS ===
-        output, node_states = self.graph(x_modulated)
-        
-        # === 5. FAST LOOP ===
+        # === 4. FAST LOOP ===
         prediction_error = 0.0
         if target is not None:
             prediction_error = (output - target).abs().mean().item()
         
-        # === 6. METABOLIC DECAY (Entropy) with Circadian Modulation ===
-        # Natural decay varies with circadian rhythm
+        # === 4.5 METABOLIC DECAY (Entropy) ===
+        # Natural decay of structural integrity over time
         with torch.no_grad():
-            decay_rate = 0.999 * circadian_mod  # Decay faster/slower based on rhythm
-            self.graph.edge_weights.data *= decay_rate
-            self.graph.node_features.data *= 0.9995 * circadian_mod
+            self.graph.edge_weights.data *= 0.999  # Structural decay
+            self.graph.node_features.data *= 0.9995 # Activation decay
             
         trigger_slow = self._run_fast_loop(prediction_error)
         
-        # === 7. SLOW LOOP (periodic or triggered) ===
+        # === 5. SLOW LOOP (periodic or triggered) ===
         steps_since_slow = self.state.step_count - self.state.last_slow_loop
         if trigger_slow or steps_since_slow >= self.config.slow_loop_interval:
             self._run_slow_loop()
         
-        # === 8. RETURN (with metabolic telemetry) ===
-        import math
+        # === 6. RETURN ===
         info = {
             'ei_score': self.state.ei_score,
             'pain_level': self.state.pain_level,
@@ -530,12 +428,6 @@ class DivineMonad(nn.Module):
             'is_repairing': self.state.is_repairing,
             'repair_count': self.state.repair_count,
             'step': self.state.step_count,
-            # === METABOLIC TELEMETRY (Breathing) ===
-            'metabolic_phase': self.metabolic_phase.item(),
-            'circadian_phase': self.circadian_phase.item(),
-            'metabolic_amplitude': math.sin(self.metabolic_phase.item()),
-            'circadian_amplitude': math.sin(self.circadian_phase.item()),
-            'neural_temperature': self.config.neural_temperature,
             'action_log': self.action_log[-5:] if hasattr(self, 'action_log') and self.action_log else []
         }
         
@@ -543,7 +435,6 @@ class DivineMonad(nn.Module):
     
     def get_status(self) -> Dict:
         """Get current status for VoiceBox."""
-        import math
         return {
             'ei_score': self.state.ei_score,
             'pain_level': self.state.pain_level,
@@ -551,9 +442,6 @@ class DivineMonad(nn.Module):
             'num_edges': self.state.num_edges,
             'is_repairing': self.state.is_repairing,
             'repair_count': self.state.repair_count,
-            # === METABOLIC TELEMETRY ===
-            'metabolic_phase': self.metabolic_phase.item() if hasattr(self, 'metabolic_phase') else 0.0,
-            'metabolic_amplitude': math.sin(self.metabolic_phase.item()) if hasattr(self, 'metabolic_phase') else 0.0,
             'action_log': self.action_log[-5:] if self.action_log else []
         }
 
