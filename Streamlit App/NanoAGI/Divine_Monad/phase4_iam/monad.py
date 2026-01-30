@@ -186,6 +186,15 @@ class DivineMonad(nn.Module):
         else:
             self.state.edge_density = 0.0
     
+    def reset_state(self):
+        """Reset internal state for a clean test run."""
+        self.state.pain_level = 0.0
+        self.state.is_repairing = False
+        self.state.repair_count = 0
+        self.state.surprise = 0.0
+        self.state.prediction_error = 0.0
+        self.action_log = ["STATE_RESET"]
+
     def _compute_ei_proxy(self) -> Tuple[float, float, float]:
         """
         Compute Effective Information (simplified proxy).
@@ -197,25 +206,31 @@ class DivineMonad(nn.Module):
             (ei_score, ei_micro, ei_macro)
         """
         with torch.no_grad():
-            # Compute node activation variance as proxy for EI_micro
+            # 1. EI_MICRO: Node activation variance
+            # We add a small baseline and scale to ensure non-zero if graph is "alive"
             node_var = self.graph.node_features.var(dim=0).mean().item()
-            ei_micro = min(1.0, node_var * 5)  # Normalized
+            ei_micro = min(1.0, 0.1 + node_var * 10)  # Baseline 0.1
             
-            # Compute edge weight concentration as proxy for EI_macro
-            # Higher concentration = more "meaningful" connections
+            # 2. EI_MACRO: Connectivity structure (Concentration/Gini)
             edge_weights = self.graph.edge_weights.abs()
-            if edge_weights.numel() > 0:
+            if edge_weights.numel() > 1:
                 # Gini coefficient approximation
                 sorted_weights = edge_weights.flatten().sort()[0]
                 n = sorted_weights.numel()
                 index = torch.arange(1, n + 1, dtype=torch.float32)
                 gini = (2 * (index * sorted_weights).sum() - (n + 1) * sorted_weights.sum()) / (n * sorted_weights.sum() + 1e-8)
                 ei_macro = min(1.0, max(0.0, gini.item()))
+            elif edge_weights.numel() == 1:
+                ei_macro = 0.2 # Small bonus for having any connection
             else:
                 ei_macro = 0.0
             
-            # Overall EI score (macro > micro indicates emergence)
-            ei_score = 0.5 * (ei_macro + (1.0 if ei_macro > ei_micro else 0.0))
+            # 3. EI_SCORE: Emergence calculation
+            # If structure (macro) is significantly stronger than noise (micro), emergence is high.
+            # Base score is macro-driven, with a bonus for the macro/micro ratio
+            ratio = ei_macro / (ei_micro + 1e-8)
+            emergence_bonus = 0.5 if ratio > 1.2 else 0.0
+            ei_score = min(1.0, 0.5 * ei_macro + emergence_bonus)
             
         return ei_score, ei_micro, ei_macro
     
