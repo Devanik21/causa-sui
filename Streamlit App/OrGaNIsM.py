@@ -1103,6 +1103,8 @@ def fragment_divine_monad():
                     ei_samples.append(info['ei_score'])
                     progress_bar.progress((i + 1) / (calibration_steps + silence_steps + 20), 
                                          text=f"Calibration: {i+1}/{calibration_steps}")
+                    import time
+                    time.sleep(0.05) # Prevent too-fast refresh
                 
                 mean_ei = sum(ei_samples) / len(ei_samples) if ei_samples else 0.5
                 std_ei = (sum((x - mean_ei)**2 for x in ei_samples) / len(ei_samples)) ** 0.5 if len(ei_samples) > 1 else 0.05
@@ -1150,6 +1152,8 @@ def fragment_divine_monad():
                     
                     progress_bar.progress((calibration_steps + i + 1) / (calibration_steps + silence_steps + 20), 
                                          text=f"Silence Test: {i+1}/{silence_steps}")
+                    import time
+                    time.sleep(0.05) # Prevent too-fast refresh
                 
                 if not panic_detected and silence_repairs == 0:
                     st.success(f"✅ **SILENCE TEST PASSED** - {silence_steps} steps, Pain=0, Repairs=0")
@@ -1213,6 +1217,8 @@ def fragment_divine_monad():
                     recovery_log.append(f"Step {i}: EI={final_ei:.4f}, Pain={info['pain_level']:.2f}, Repairing={info['is_repairing']}")
                     progress_bar.progress((calibration_steps + silence_steps + i + 1) / (calibration_steps + silence_steps + 20), 
                                          text=f"Recovery: {i+1}/{max_recovery_steps}")
+                    import time
+                    time.sleep(0.1) # Recovery takes longer to visualize
                     
                     # Check if recovered
                     if final_ei > pain_threshold and not info['is_repairing']:
