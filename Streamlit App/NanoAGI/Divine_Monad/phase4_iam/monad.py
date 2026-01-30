@@ -121,7 +121,8 @@ class MonadState:
         # With sensitivity=50, a 0.02 drop below threshold = 1.0 Pain
         raw_pain = delta * sensitivity
             
-        return min(1.0, max(0.0, raw_pain))
+        # Allow pain to exceed 1.0 (Super-Pain) to show true depth of distress
+        return max(0.0, raw_pain)
 
 
 class DivineMonad(nn.Module):
@@ -279,10 +280,10 @@ class DivineMonad(nn.Module):
             #           but low degeneracy (individual states are precise)
             raw_ei = determinism - degeneracy
             
-            # Normalize to [0, 1] range
+            # Normalize to nominal range but ALLOW FLUCTUATIONS beyond [0, 1]
+            # This ensures the graph is never perfectly flat
             # Max theoretical EI for binary states is log(2) ≈ 0.693
-            # We scale and shift to get a usable range
-            ei_normalized = max(0.0, min(1.0, 0.5 + raw_ei * 2))
+            ei_normalized = 0.5 + raw_ei * 2.0
             
         return ei_normalized, determinism, degeneracy
     
