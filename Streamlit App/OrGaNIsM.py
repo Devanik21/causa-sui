@@ -2,13 +2,26 @@ import os
 import sys
 
 # --- CRITICAL: Add root to path BEFORE any other imports ---
-# This allows the app to find core.py even if it's in a subfolder like /Streamlit_App/
+# Handle various directory structures (Local / NanoAGI / Streamlit Cloud)
 base_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(base_dir)
-if os.path.exists(os.path.join(base_dir, "core.py")):
-    sys.path.append(base_dir)
-elif os.path.exists(os.path.join(parent_dir, "core.py")):
-    sys.path.append(parent_dir)
+grandparent_dir = os.path.dirname(parent_dir)
+
+# Potential locations for Divine_Monad and core modules
+search_paths = [
+    base_dir,
+    parent_dir,
+    os.path.join(base_dir, "NanoAGI"),
+    os.path.join(parent_dir, "NanoAGI"),
+    os.path.join(grandparent_dir, "Streamlit App", "NanoAGI")
+]
+
+for path in search_paths:
+    if os.path.isdir(path) and path not in sys.path:
+        # Check if this path contains our key folders
+        if os.path.exists(os.path.join(path, "Divine_Monad")) or os.path.exists(os.path.join(path, "core.py")):
+            sys.path.insert(0, path)
+
 
 import streamlit as st
 import torch
