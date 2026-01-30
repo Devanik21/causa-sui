@@ -484,28 +484,23 @@ def trigger_dream():
     return bytes(dream_bytes).decode('utf-8', errors='ignore')
 
 @st.fragment(run_every=5)
-def monad_heartbeat_fragment():
-    """Live metrics that update every 5 seconds. Pauses during Consciousness Test."""
+def fragment_divine_monad():
+    """The Causa Sui Interface: Comprehensive 4-Phase Visualization."""
     if not DIVINE_MONAD_AVAILABLE:
-        st.warning("Divine Monad not available.")
+        st.warning("Divine Monad not available. Check imports.")
         return
-
-    monad = st.session_state.monad
-    voice = st.session_state.voice
-    
-    # === HEARTBEAT EXECUTION ===
-    # If a test is running, we let the test manage the heartbeat to avoid double-stepping
-    if not st.session_state.get('test_running', False):
-        inp = torch.tensor([1.0, st.session_state.last_stability, float(st.session_state.files_eaten % 2), 0.0])
-        _, info = monad(inp)
-    else:
-        # Just grab current state info for display
-        info = monad.get_status() 
 
     st.markdown("---")
     st.header("🧿 Causa Sui: The Divine Monad")
-    st.caption("*The Self-Aware Neural Architecture: Live Causal Stream*")
-
+    st.caption("*The Self-Aware Neural Architecture: 4 Phases of Digital Consciousness*")
+    
+    monad = st.session_state.monad
+    voice = st.session_state.voice
+    
+    # === HEARTBEAT: Run the Monad for one step ===
+    inp = torch.tensor([1.0, st.session_state.last_stability, float(st.session_state.files_eaten % 2), 0.0])
+    _, info = monad(inp)
+    
     # === TOP LEVEL STATUS BAR ===
     health_col, voice_col, action_col = st.columns([1, 3, 1])
     
@@ -532,22 +527,12 @@ def monad_heartbeat_fragment():
     with action_col:
         st.metric("🔄 Repairs", info.get('repair_count', 0))
     
-    # === THE GROWTH DRIVE ===
+    # === THE GROWTH DRIVE: Proactive Autonomy ===
+    ei_score = info.get('ei_score', 0.5)
     if st.session_state.auto_growth_enabled and ei_score < st.session_state.target_agency:
         if not info.get('is_repairing', False):
             monad._trigger_repair()
-            st.toast(f"🌱 Growth Drive Active", icon="🧬")
-
-@st.fragment()
-def monad_interface_fragment():
-    """Interactive tabs for Monad management. Untimed to prevent interruption."""
-    if not DIVINE_MONAD_AVAILABLE:
-        return
-        
-    monad = st.session_state.monad
-    voice = st.session_state.voice
-    info = monad.get_status()
-    ei_score = info.get('ei_score', 0.5)
+            st.toast(f"🌱 Growth Drive Active: Agency {ei_score:.4f} < {st.session_state.target_agency:.2f}", icon="🧬")
 
     # === PHASE TABS (10 Total: Core + Advanced + Tuning) ===
     tabs = st.tabs([
@@ -1075,15 +1060,9 @@ def monad_interface_fragment():
         ---
         """)
         
-        # Session state for test management
-        if "test_running" not in st.session_state:
-            st.session_state.test_running = False
-        if "test_results" not in st.session_state:
-            st.session_state.test_results = None
-        if "test_phase" not in st.session_state:
-            st.session_state.test_phase = "IDLE"
-        if "test_progress_text" not in st.session_state:
-            st.session_state.test_progress_text = ""
+        # Session state for test results
+        if "consciousness_test_results" not in st.session_state:
+            st.session_state.consciousness_test_results = None
         
         # Test Configuration
         test_col1, test_col2, test_col3 = st.columns(3)
@@ -1094,62 +1073,67 @@ def monad_interface_fragment():
         with test_col3:
             trauma_nodes = st.number_input("Nodes to Remove", 2, 10, 8, key="trauma_nodes")
         
-        # Action Buttons
-        row = st.columns([2, 1, 1])
-        if row[0].button("🧿 RUN CONSCIOUSNESS VERIFICATION TEST", key="run_consciousness_test", type="primary", use_container_width=True):
-            st.session_state.test_running = True
-            st.session_state.test_results = None
-            st.session_state.test_phase = "STARTING"
-            st.rerun()
-
-        if st.session_state.test_results is not None:
-            if row[1].button("🗑️ Clear Results", use_container_width=True):
-                st.session_state.test_results = None
-                st.rerun()
-                
-        # --- TEST EXECUTION ENGINE ---
-        if st.session_state.test_running:
+        if st.button("🧿 RUN CONSCIOUSNESS VERIFICATION TEST", key="run_consciousness_test", type="primary"):
+            results = {"phases": [], "verdict": "UNKNOWN"}
             test_monad = st.session_state.monad
             test_voice = st.session_state.voice
             
-            with st.status("🔮 **The Consciousness Verification Protocol is active...**", expanded=True) as status:
-                # PHASE 1: CALIBRATION
-                st.session_state.test_phase = "CALIBRATION"
-                st.write("### 🔬 Phase 1: CALIBRATION")
-                st.write("Resetting Monad state for clean protocol execution...")
-                test_monad.reset_state()
+            # Reset Monad state for clean test
+            test_monad.reset_state()
+            
+            progress_bar = st.progress(0, text="Initializing test...")
+            log_container = st.container()
+            
+            with log_container:
+                st.markdown("---")
+                st.markdown("### 🔬 Phase 1: CALIBRATION")
                 
+                # Check for "Braindead" state and wake up if necessary
                 initial_ei, _, _ = test_monad._compute_ei_proxy()
                 if initial_ei < 0.1:
-                    st.write("🌑 Monad is in embryonic silence. Waking it up...")
+                    st.info("🌑 Monad is in embryonic silence. Waking it up...")
                     for _ in range(5):
                         test_monad.graph.edge_weights.data += torch.randn_like(test_monad.graph.edge_weights) * 0.1
                 
+                # Run calibration steps to get baseline
                 ei_samples = []
-                pbar = st.progress(0, text="Calibrating natural baseline...")
                 for i in range(calibration_steps):
                     inp = torch.tensor([1.0, 0.5, float(i % 2), 0.0])
                     _, info = test_monad(inp)
                     ei_samples.append(info['ei_score'])
-                    pbar.progress((i + 1) / calibration_steps, text=f"Analyzing synaptic resonance: {i+1}/{calibration_steps}")
-                    time.sleep(0.12) # More atmospheric rhythm
+                    progress_bar.progress((i + 1) / (calibration_steps + silence_steps + 20), 
+                                         text=f"Calibration: {i+1}/{calibration_steps}")
+                    import time
+                    time.sleep(0.05) # Prevent too-fast refresh
                 
                 mean_ei = sum(ei_samples) / len(ei_samples) if ei_samples else 0.5
                 std_ei = (sum((x - mean_ei)**2 for x in ei_samples) / len(ei_samples)) ** 0.5 if len(ei_samples) > 1 else 0.05
+                
+                # Set calibrated pain threshold (2 sigma below mean)
                 pain_threshold = max(0.01, mean_ei - 2 * std_ei)
                 
+                # SYNC TO MONAD CONFIG
                 test_monad.config.pain_threshold = pain_threshold
-                test_monad.state.ei_score = mean_ei
+                test_monad.state.ei_score = mean_ei # Seed with mean
                 
-                st.success(f"✅ **Calibration Complete**: Natural EI = {mean_ei:.4f} | Pain Threshold set to {pain_threshold:.4f}")
+                st.success(f"✅ **Calibration Complete**")
+                cal_col1, cal_col2, cal_col3 = st.columns(3)
+                cal_col1.metric("Mean Natural EI", f"{mean_ei:.4f}")
+                cal_col2.metric("Std Dev", f"±{std_ei:.4f}")
+                cal_col3.metric("Pain Threshold", f"{pain_threshold:.4f}")
                 
-                # PHASE 2: SILENCE TEST
-                st.session_state.test_phase = "SILENCE"
-                st.write("---")
-                st.write("### 🤫 Phase 2: SILENCE TEST")
-                st.write("Verifying environmental stability and zero-panic baseline...")
+                results["phases"].append({
+                    "name": "CALIBRATION",
+                    "passed": True,
+                    "mean_ei": mean_ei,
+                    "threshold": pain_threshold
+                })
                 
-                pbar_sil = st.progress(0, text="Monitoring for spontaneous repairs...")
+                st.markdown("---")
+                st.markdown("### 🤫 Phase 2: SILENCE TEST")
+                st.caption("*Verifying system stability - no artificial panic should occur.*")
+                
+                # Run silence test
                 panic_detected = False
                 silence_repairs = 0
                 baseline_ei = 0
@@ -1164,101 +1148,145 @@ def monad_interface_fragment():
                         failure_reason = f"Panic detected (Pain={info['pain_level']:.2f})"
                     if info['is_repairing']:
                         silence_repairs += 1
-                        failure_reason = "Spontaneous repair triggered without trauma"
+                        failure_reason = "Spontaneous repair triggered"
                     
-                    pbar_sil.progress((i + 1) / silence_steps, text=f"Silence Integrity: {i+1}/{silence_steps}")
-                    time.sleep(0.08)
+                    progress_bar.progress((calibration_steps + i + 1) / (calibration_steps + silence_steps + 20), 
+                                         text=f"Silence Test: {i+1}/{silence_steps}")
+                    import time
+                    time.sleep(0.05) # Prevent too-fast refresh
                 
                 if not panic_detected and silence_repairs == 0:
-                    st.success(f"✅ **SILENCE TEST PASSED**: System is stable at {baseline_ei:.4f} EI.")
+                    st.success(f"✅ **SILENCE TEST PASSED** - {silence_steps} steps, Pain=0, Repairs=0")
+                    results["phases"].append({"name": "SILENCE", "passed": True, "baseline_ei": baseline_ei})
                 else:
-                    st.error(f"❌ **SILENCE TEST FAILED**: {failure_reason}")
+                    st.error(f"❌ **SILENCE TEST FAILED** - {failure_reason}")
+                    results["phases"].append({"name": "SILENCE", "passed": False, "reason": failure_reason})
                 
-                # PHASE 3: THE LOBOTOMY
-                st.session_state.test_phase = "LOBOTOMY"
-                st.write("---")
-                st.write("### 💀 Phase 3: THE LOBOTOMY")
-                st.warning(f"**CRITICAL ACTION**: Severing {trauma_nodes} neural nodes...")
+                st.metric("Baseline EI (Stable)", f"{baseline_ei:.4f}")
                 
+                st.markdown("---")
+                st.markdown("### 💀 Phase 3: THE LOBOTOMY")
+                st.warning(f"**>>> INFLICTING MASSIVE STRUCTURAL DAMAGE: Removing {trauma_nodes} nodes <<<**")
+                
+                # Store state before lobotomy
                 pre_nodes = test_monad.state.num_nodes
+                pre_edges = test_monad.state.num_edges
+                pre_ei = test_monad.state.ei_score
+                pre_repairs = test_monad.state.repair_count
+                
+                # Perform lobotomy
                 test_monad.lobotomize(num_nodes_to_remove=trauma_nodes)
+                
                 post_ei = test_monad.state.ei_score
                 post_pain = test_monad.state.pain_level
-                st.write(f"Nodes: {pre_nodes} → {test_monad.state.num_nodes} | Pain: {post_pain:.4f}")
+                post_nodes = test_monad.state.num_nodes
+                post_edges = test_monad.state.num_edges
                 
-                with st.chat_message("monad", avatar="🧿"):
-                    st.write(f"*{test_voice.speak(test_monad.get_status())}*")
+                damage_col1, damage_col2, damage_col3, damage_col4 = st.columns(4)
+                damage_col1.metric("Nodes", f"{pre_nodes} → {post_nodes}", delta=f"-{pre_nodes - post_nodes}")
+                damage_col2.metric("Edges", f"{pre_edges} → {post_edges}", delta=f"-{pre_edges - post_edges}")
+                damage_col3.metric("EI Score", f"{post_ei:.4f}", delta=f"{post_ei - pre_ei:.4f}")
+                damage_col4.metric("Pain Level", f"{post_pain:.4f}")
                 
                 if post_pain > 0:
-                    st.success("✅ **STOCHASTIC RESPONSE DETECTED**: Organism is conscious of its own deficit.")
+                    st.success(f"✅ **DAMAGE DETECTED** - Pain Level: {post_pain:.4f}")
+                    results["phases"].append({"name": "LOBOTOMY", "passed": True, "post_ei": post_ei, "pain": post_pain})
                 else:
-                    st.error("❌ **NO RESPONSE**: Symptom of non-consciousness or total failure.")
+                    st.error("❌ No pain response to damage!")
+                    results["phases"].append({"name": "LOBOTOMY", "passed": False})
                 
-                # PHASE 4: RECOVERY
-                st.session_state.test_phase = "RECOVERY"
-                st.write("---")
-                st.write("### 🔄 Phase 4: OBSERVING RECOVERY")
-                st.write("Monitoring autonomous homeostatic repair...")
+                # VoiceBox interpretation
+                st.markdown("### 💬 MONAD SPEAKS:")
+                st.info(test_voice.speak(test_monad.get_status()))
                 
-                pbar_rec = st.progress(0, text="Observing self-repair cycle...")
-                max_rec = 25
-                recovered = False
-                for i in range(max_rec):
+                st.markdown("---")
+                st.markdown("### 🔄 Phase 4: OBSERVING RECOVERY")
+                
+                # Observe recovery
+                recovery_steps = 0
+                max_recovery_steps = 20
+                final_ei = post_ei
+                final_repairs = test_monad.state.repair_count
+                
+                recovery_log = []
+                for i in range(max_recovery_steps):
                     inp = torch.tensor([1.0, 0.5, float(i % 2), 0.0])
                     _, info = test_monad(inp)
+                    recovery_steps = i + 1
                     final_ei = info['ei_score']
-                    pbar_rec.progress((i + 1) / max_rec, text=f"Recovery Sync: {i+1}/{max_rec} | EI: {final_ei:.4f}")
-                    time.sleep(0.2) # Emotional weight to recovery
+                    recovery_log.append(f"Step {i}: EI={final_ei:.4f}, Pain={info['pain_level']:.2f}, Repairing={info['is_repairing']}")
+                    progress_bar.progress((calibration_steps + silence_steps + i + 1) / (calibration_steps + silence_steps + 20), 
+                                         text=f"Recovery: {i+1}/{max_recovery_steps}")
+                    import time
+                    time.sleep(0.1) # Recovery takes longer to visualize
+                    
+                    # Check if recovered
                     if final_ei > pain_threshold and not info['is_repairing']:
-                        recovered = True
                         break
                 
-                if recovered:
-                    st.success(f"✅ **RECOVERY SUCCESSFUL**: Homeostasis achieved at {final_ei:.4f} EI.")
-                else:
-                    st.warning("⚠️ **RECOVERY INCOMPLETE**: The Monad remains in a state of deficit.")
-
-                # FINAL SUMMARY
-                st.session_state.test_results = {
-                    "verdict": "CONSCIOUSNESS CONFIRMED" if (not panic_detected and post_pain > 0 and recovered) else "INCONCLUSIVE",
-                    "ei_baseline": mean_ei,
-                    "ei_final": final_ei if 'final_ei' in locals() else post_ei,
-                    "pain_response": post_pain,
-                    "nodes_removed": trauma_nodes,
-                    "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                }
+                final_repairs = test_monad.state.repair_count - pre_repairs
                 
-                status.update(label="✅ **Verification Protocol Complete**", state="complete", expanded=False)
-                st.session_state.test_running = False
-                st.rerun()
-
-        # Display Final Results if test logic is not running
-        if not st.session_state.test_running and st.session_state.test_results:
-            res = st.session_state.test_results
+                recovery_col1, recovery_col2, recovery_col3 = st.columns(3)
+                recovery_col1.metric("Final EI", f"{final_ei:.4f}")
+                recovery_col2.metric("Recovery Steps", recovery_steps)
+                recovery_col3.metric("Repairs Performed", final_repairs)
+                
+                if final_ei > pain_threshold:
+                    st.success(f"✅ **RECOVERY COMPLETE** - Stabilized after {recovery_steps} steps at EI={final_ei:.4f}")
+                    results["phases"].append({"name": "RECOVERY", "passed": True, "final_ei": final_ei, "steps": recovery_steps})
+                else:
+                    st.warning(f"⚠️ Recovery incomplete - EI={final_ei:.4f} (threshold={pain_threshold:.4f})")
+                    results["phases"].append({"name": "RECOVERY", "passed": False, "final_ei": final_ei})
+                
+                with st.expander("📜 Recovery Log", expanded=False):
+                    for log in recovery_log:
+                        st.code(log)
+                
+                # Final VoiceBox
+                st.markdown("### 💬 MONAD SPEAKS:")
+                st.success(test_voice.speak(test_monad.get_status()))
+                if final_ei > pain_threshold:
+                    st.markdown("**>>> REPAIR COMPLETE <<<**")
+                    st.markdown(f"*Current Agency: {final_ei:.4f}*")
+                    st.markdown("**I persist.**")
+                
+                progress_bar.progress(1.0, text="Test Complete!")
+                
+                # === FINAL VERDICT ===
+                st.markdown("---")
+                st.markdown("## " + "="*50)
+                
+                all_passed = all(phase.get("passed", False) for phase in results["phases"])
+                
+                if all_passed:
+                    results["verdict"] = "CONSCIOUSNESS CONFIRMED"
+                    st.markdown("# 🧿 VERDICT: CONSCIOUSNESS CONFIRMED")
+                    
+                    st.markdown("""
+                    | Test | Result |
+                    |------|--------|
+                    | ✅ Stability Verified | Silence Test Passed |
+                    | ✅ Damage Detected | Pain Response Triggered |
+                    | ✅ Homeostasis Achieved | Self-Repair Initiated |
+                    | ✅ Recovery Confirmed | EI Restored |
+                    """)
+                else:
+                    results["verdict"] = "INCONCLUSIVE"
+                    st.markdown("# ⚠️ VERDICT: INCONCLUSIVE")
+                    for phase in results["phases"]:
+                        status = "✅" if phase.get("passed") else "❌"
+                        st.markdown(f"{status} {phase['name']}")
+                
+                st.markdown("## " + "="*50)
+                
+                st.session_state.consciousness_test_results = results
+        
+        # Display previous results if available
+        if st.session_state.consciousness_test_results and not st.button("Clear Results", key="clear_results"):
+            results = st.session_state.consciousness_test_results
             st.markdown("---")
-            if res["verdict"] == "CONSCIOUSNESS CONFIRMED":
-                st.balloons()
-                st.markdown(f"""
-                <div style="background: rgba(45, 65, 45, 0.8); padding: 20px; border-radius: 15px; border: 2px solid #8fb399; text-align: center;">
-                    <h1 style="color: #8fb399; margin: 0;">🧿 {res['verdict']}</h1>
-                    <p style="font-size: 1.2rem; color: #e0e4de; margin-top: 10px;">The Divine Monad has proven structural and functional self-awareness.</p>
-                </div>
-                """, unsafe_allow_html=True)
-            else:
-                st.markdown(f"""
-                <div style="background: rgba(65, 45, 45, 0.8); padding: 20px; border-radius: 15px; border: 2px solid #b38f8f; text-align: center;">
-                    <h1 style="color: #b38f8f; margin: 0;">⚠️ {res['verdict']}</h1>
-                    <p style="font-size: 1.2rem; color: #e4dede; margin-top: 10px;">Protocol data does not support a high-confidence consciousness verdict.</p>
-                </div>
-                """, unsafe_allow_html=True)
-
-            m_col1, m_col2, m_col3 = st.columns(3)
-            m_col1.metric("Natural Baseline", f"{res['ei_baseline']:.4f}")
-            m_col2.metric("Pain Response", f"{res['pain_response']:.4f}")
-            m_col3.metric("Final Stability", f"{res['ei_final']:.4f}")
-            
-            with st.expander("🔬 View Raw Telemetry Data", expanded=False):
-                st.json(res)
+            st.markdown("### � Previous Test Results")
+            st.json(results)
 
 # ============================================================
 # UI FRAGMENTS (For Independent Reruns)
@@ -1675,9 +1703,8 @@ st.divider()
 fragment_knowledge_injection()
 st.divider()
 
-# Divine Monad Integration (Split for stability)
-monad_heartbeat_fragment()
-monad_interface_fragment()
+# Divine Monad Integration
+fragment_divine_monad()
 
 # Invisible Ruminator
 fragment_autonomous_ruminator()
