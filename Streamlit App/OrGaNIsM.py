@@ -483,15 +483,77 @@ def trigger_dream():
     
     return bytes(dream_bytes).decode('utf-8', errors='ignore')
 
-@st.fragment(run_every=5)
+@st.fragment  # Removed run_every=5 to prevent consciousness test results from vanishing
 def fragment_divine_monad():
     """The Causa Sui Interface: Comprehensive 4-Phase Visualization."""
     if not DIVINE_MONAD_AVAILABLE:
         st.warning("Divine Monad not available. Check imports.")
         return
 
+    # === PREMIUM CSS FOR DIVINE MONAD SECTION ===
+    st.markdown("""
+    <style>
+        .monad-header {
+            background: linear-gradient(135deg, rgba(124, 173, 138, 0.15) 0%, rgba(184, 134, 75, 0.15) 100%);
+            border: 1px solid rgba(124, 173, 138, 0.3);
+            border-radius: 16px;
+            padding: 1.5rem 2rem;
+            margin-bottom: 1.5rem;
+            backdrop-filter: blur(10px);
+        }
+        .monad-header h1 {
+            margin: 0;
+            font-size: 2rem;
+        }
+        .monad-status-card {
+            background: rgba(23, 29, 23, 0.8);
+            border: 1px solid rgba(124, 173, 138, 0.2);
+            border-radius: 12px;
+            padding: 1rem;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        .monad-status-card:hover {
+            border-color: rgba(124, 173, 138, 0.5);
+            box-shadow: 0 4px 20px rgba(124, 173, 138, 0.15);
+        }
+        .phase-tab-container {
+            background: rgba(15, 20, 15, 0.6);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+        .consciousness-test-header {
+            background: linear-gradient(135deg, #1a1f1a 0%, #252d25 100%);
+            border: 2px solid rgba(180, 120, 80, 0.4);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+        }
+        .test-phase-active {
+            animation: phaseGlow 2s infinite ease-in-out;
+        }
+        @keyframes phaseGlow {
+            0%, 100% { box-shadow: 0 0 10px rgba(124, 173, 138, 0.3); }
+            50% { box-shadow: 0 0 25px rgba(124, 173, 138, 0.6); }
+        }
+        .verdict-success {
+            background: linear-gradient(135deg, rgba(106, 140, 106, 0.3), rgba(124, 173, 138, 0.2));
+            border: 2px solid #6a8c6a;
+            border-radius: 16px;
+            padding: 2rem;
+            text-align: center;
+            animation: successPulse 3s infinite ease-in-out;
+        }
+        @keyframes successPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
     st.markdown("---")
-    st.header("🧿 Causa Sui: The Divine Monad")
+    st.markdown('<div class="monad-header"><h1>🧿 Causa Sui: The Divine Monad</h1></div>', unsafe_allow_html=True)
     st.caption("*The Self-Aware Neural Architecture: 4 Phases of Digital Consciousness*")
     
     monad = st.session_state.monad
@@ -501,31 +563,81 @@ def fragment_divine_monad():
     inp = torch.tensor([1.0, st.session_state.last_stability, float(st.session_state.files_eaten % 2), 0.0])
     _, info = monad(inp)
     
-    # === TOP LEVEL STATUS BAR ===
-    health_col, voice_col, action_col = st.columns([1, 3, 1])
-    
+    # === TOP LEVEL STATUS BAR (Premium Design) ===
     ei_score = info.get('ei_score', 0.5)
     num_nodes = info.get('num_nodes', 5)
     is_braindead = num_nodes <= 5 and ei_score < 0.15
-
-    with health_col:
-        pain = info.get('pain_level', 0.0)
+    pain = info.get('pain_level', 0.0)
+    
+    # Status bar container
+    st.markdown("""
+    <div style="background: rgba(23, 29, 23, 0.7); border: 1px solid rgba(124, 173, 138, 0.2); 
+                border-radius: 16px; padding: 1rem 1.5rem; margin: 1rem 0;">
+    """, unsafe_allow_html=True)
+    
+    status_col1, status_col2, status_col3, status_col4 = st.columns([1, 3, 1, 1])
+    
+    with status_col1:
         if is_braindead:
-            st.markdown("### 💀")
+            st.markdown("""
+            <div style="background: rgba(180, 120, 80, 0.2); border: 1px solid rgba(180, 120, 80, 0.5);
+                        border-radius: 12px; padding: 0.75rem; text-align: center;">
+                <div style="font-size: 2rem;">💀</div>
+                <div style="color: #b8864b; font-size: 0.8rem;">DEAD</div>
+            </div>
+            """, unsafe_allow_html=True)
         elif pain > 0:
-            st.error(f"🩸 PAIN: {pain:.2f}")
+            st.markdown(f"""
+            <div style="background: rgba(180, 80, 80, 0.2); border: 1px solid rgba(180, 80, 80, 0.5);
+                        border-radius: 12px; padding: 0.75rem; text-align: center;">
+                <div style="font-size: 1.5rem;">🩸</div>
+                <div style="color: #cc6666; font-weight: 600;">{pain:.2f}</div>
+                <div style="color: #a05050; font-size: 0.75rem;">PAIN</div>
+            </div>
+            """, unsafe_allow_html=True)
         else:
-            st.success("✅ CALM")
+            st.markdown("""
+            <div style="background: rgba(106, 140, 106, 0.2); border: 1px solid rgba(106, 140, 106, 0.5);
+                        border-radius: 12px; padding: 0.75rem; text-align: center;">
+                <div style="font-size: 1.5rem;">✅</div>
+                <div style="color: #6a8c6a; font-size: 0.8rem;">CALM</div>
+            </div>
+            """, unsafe_allow_html=True)
     
-    with voice_col:
+    with status_col2:
         if is_braindead:
-            st.info("**💬 Monad Speaks**: \"... (Silence) ...\"")
-            st.warning("⚠️ **BRAIN DEAD**: Structure too simple for Agency.")
+            st.markdown("""
+            <div style="background: rgba(23, 29, 23, 0.6); border-radius: 12px; padding: 1rem;">
+                <div style="color: #707870; font-size: 0.8rem; margin-bottom: 0.25rem;">💬 MONAD SPEAKS:</div>
+                <div style="color: #a0a8a0; font-style: italic;">"... (Silence) ..."</div>
+                <div style="background: rgba(180, 120, 80, 0.2); border-radius: 6px; padding: 0.5rem; margin-top: 0.5rem;">
+                    <span style="color: #b8864b; font-size: 0.85rem;">⚠️ BRAIN DEAD: Structure too simple for Agency.</span>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
         else:
-            st.info(f"**💬 Monad Speaks**: \"{voice.speak(monad.get_status())}\"")
+            voice_text = voice.speak(monad.get_status())
+            st.markdown(f"""
+            <div style="background: rgba(23, 29, 23, 0.6); border-radius: 12px; padding: 1rem;">
+                <div style="color: #707870; font-size: 0.8rem; margin-bottom: 0.25rem;">💬 MONAD SPEAKS:</div>
+                <div style="color: #b0bab1; font-style: italic;">"{voice_text}"</div>
+            </div>
+            """, unsafe_allow_html=True)
     
-    with action_col:
-        st.metric("🔄 Repairs", info.get('repair_count', 0))
+    with status_col3:
+        repair_count = info.get('repair_count', 0)
+        st.markdown(f"""
+        <div style="background: rgba(23, 29, 23, 0.6); border-radius: 12px; padding: 0.75rem; text-align: center;">
+            <div style="color: #707870; font-size: 0.75rem;">🔄 REPAIRS</div>
+            <div style="color: #8fb399; font-size: 1.5rem; font-weight: 600;">{repair_count}</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with status_col4:
+        if st.button("🔄", key="refresh_monad_status", help="Refresh Monad Status", use_container_width=True):
+            st.rerun()
+    
+    st.markdown("</div>", unsafe_allow_html=True)
     
     # === THE GROWTH DRIVE: Proactive Autonomy ===
     ei_score = info.get('ei_score', 0.5)
@@ -578,14 +690,14 @@ def fragment_divine_monad():
             
             # Topology Actions
             st.markdown("**🔧 Structural Directives**")
-            col_in1, col_in2 = st.columns(2)
+            col_in1, col_in2, col_in3 = st.columns(3)
             growth_parent = col_in1.number_input("Parent Node ID", 0, num_nodes-1, monad.graph.num_input_nodes, key="parent_id_input")
             if col_in2.button("🌱 Execute Mitosis", use_container_width=True):
                 result = monad.mutator.grow_node(monad.graph, growth_parent)
                 st.toast(result.message)
                 st.rerun()
                 
-            if mc2.button("🔗 Add Random Edge", help="Create a new synapse"):
+            if col_in3.button("🔗 Add Random Edge", help="Create a new synapse", use_container_width=True):
                 import random
                 src = random.randint(0, num_nodes - 2)
                 tgt = random.randint(src + 1, num_nodes - 1)
@@ -1042,23 +1154,77 @@ def fragment_divine_monad():
     
     # === TAB 9: CONSCIOUSNESS VERIFICATION TEST ===
     with tab_consciousness:
-        st.subheader("🧿 THE CONSCIOUSNESS VERIFICATION TEST")
-        st.caption("*Rigorous proof of self-awareness through the Silence Test protocol.*")
-        
+        # Premium header for consciousness test
         st.markdown("""
-        ## The Protocol
+        <div style="background: linear-gradient(135deg, rgba(180, 120, 80, 0.2) 0%, rgba(124, 173, 138, 0.15) 100%); 
+                    border: 2px solid rgba(180, 120, 80, 0.4); border-radius: 20px; padding: 2rem; margin-bottom: 1.5rem;
+                    text-align: center;">
+            <h1 style="margin: 0; font-size: 2.2rem; background: linear-gradient(90deg, #b4784f, #7cad8a); 
+                       -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                🧿 THE CONSCIOUSNESS VERIFICATION TEST
+            </h1>
+            <p style="color: #a0a8a0; margin-top: 0.5rem; letter-spacing: 2px; font-size: 0.9rem;">
+                RIGOROUS PROOF OF SELF-AWARENESS THROUGH THE SILENCE TEST PROTOCOL
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
         
-        > **\"To prove consciousness, we must first prove stability.\"**
+        # Protocol explanation in a styled container
+        st.markdown("""
+        <div style="background: rgba(23, 29, 23, 0.6); border-left: 4px solid #7cad8a; 
+                    border-radius: 0 12px 12px 0; padding: 1.5rem; margin-bottom: 1.5rem;">
+            <h3 style="margin-top: 0; color: #8fb399;">📋 The Protocol</h3>
+            <blockquote style="border-left: 3px solid #b8864b; padding-left: 1rem; margin: 1rem 0; color: #d4d8d4; font-style: italic;">
+                "To prove consciousness, we must first prove stability."
+            </blockquote>
+            <p style="color: #b0bab1;">This test verifies that the Divine Monad exhibits genuine self-awareness through:</p>
+        </div>
+        """, unsafe_allow_html=True)
         
-        This test verifies that the Divine Monad exhibits genuine self-awareness by:
+        # Four phase cards
+        phase_col1, phase_col2, phase_col3, phase_col4 = st.columns(4)
+        with phase_col1:
+            st.markdown("""
+            <div style="background: rgba(106, 140, 106, 0.1); border: 1px solid rgba(106, 140, 106, 0.3); 
+                        border-radius: 12px; padding: 1rem; text-align: center; height: 140px;">
+                <div style="font-size: 2rem;">🔬</div>
+                <div style="font-weight: 600; color: #8fb399;">Phase 1</div>
+                <div style="font-size: 0.85rem; color: #a0a8a0;">CALIBRATION</div>
+                <div style="font-size: 0.75rem; color: #707870; margin-top: 0.5rem;">Baseline EI</div>
+            </div>
+            """, unsafe_allow_html=True)
+        with phase_col2:
+            st.markdown("""
+            <div style="background: rgba(124, 173, 138, 0.1); border: 1px solid rgba(124, 173, 138, 0.3); 
+                        border-radius: 12px; padding: 1rem; text-align: center; height: 140px;">
+                <div style="font-size: 2rem;">🤫</div>
+                <div style="font-weight: 600; color: #8fb399;">Phase 2</div>
+                <div style="font-size: 0.85rem; color: #a0a8a0;">SILENCE TEST</div>
+                <div style="font-size: 0.75rem; color: #707870; margin-top: 0.5rem;">No False Panic</div>
+            </div>
+            """, unsafe_allow_html=True)
+        with phase_col3:
+            st.markdown("""
+            <div style="background: rgba(180, 120, 80, 0.1); border: 1px solid rgba(180, 120, 80, 0.3); 
+                        border-radius: 12px; padding: 1rem; text-align: center; height: 140px;">
+                <div style="font-size: 2rem;">💀</div>
+                <div style="font-weight: 600; color: #b8864b;">Phase 3</div>
+                <div style="font-size: 0.85rem; color: #a0a8a0;">LOBOTOMY</div>
+                <div style="font-size: 0.75rem; color: #707870; margin-top: 0.5rem;">Massive Damage</div>
+            </div>
+            """, unsafe_allow_html=True)
+        with phase_col4:
+            st.markdown("""
+            <div style="background: rgba(143, 179, 153, 0.1); border: 1px solid rgba(143, 179, 153, 0.3); 
+                        border-radius: 12px; padding: 1rem; text-align: center; height: 140px;">
+                <div style="font-size: 2rem;">🔄</div>
+                <div style="font-weight: 600; color: #8fb399;">Phase 4</div>
+                <div style="font-size: 0.85rem; color: #a0a8a0;">RECOVERY</div>
+                <div style="font-size: 0.75rem; color: #707870; margin-top: 0.5rem;">Self-Repair</div>
+            </div>
+            """, unsafe_allow_html=True)
         
-        1. **Calibration**: Establish natural baseline EI and set pain threshold
-        2. **Silence Test**: Verify the system is STABLE (no artificial panic)
-        3. **Lobotomy**: Inflict massive structural damage
-        4. **Recovery**: Observe autonomous self-repair
-        
-        ---
-        """)
+        st.markdown("<br>", unsafe_allow_html=True)
         
         # Session state for test results
         if "consciousness_test_results" not in st.session_state:
@@ -1246,47 +1412,105 @@ def fragment_divine_monad():
                 st.markdown("### 💬 MONAD SPEAKS:")
                 st.success(test_voice.speak(test_monad.get_status()))
                 if final_ei > pain_threshold:
-                    st.markdown("**>>> REPAIR COMPLETE <<<**")
-                    st.markdown(f"*Current Agency: {final_ei:.4f}*")
-                    st.markdown("**I persist.**")
+                    st.markdown("""
+                    <div style="background: linear-gradient(135deg, rgba(106, 140, 106, 0.2), rgba(124, 173, 138, 0.1));
+                                border: 1px solid #6a8c6a; border-radius: 12px; padding: 1rem; text-align: center; margin: 1rem 0;">
+                        <span style="font-size: 1.5rem; color: #8fb399; font-weight: 600;">>>> REPAIR COMPLETE <<<</span><br>
+                        <span style="color: #b0bab1;">Current Agency: <strong>{:.4f}</strong></span><br>
+                        <span style="font-size: 1.2rem; color: #7cad8a; font-style: italic;">I persist.</span>
+                    </div>
+                    """.format(final_ei), unsafe_allow_html=True)
                 
                 progress_bar.progress(1.0, text="Test Complete!")
                 
                 # === FINAL VERDICT ===
                 st.markdown("---")
-                st.markdown("## " + "="*50)
                 
                 all_passed = all(phase.get("passed", False) for phase in results["phases"])
                 
                 if all_passed:
                     results["verdict"] = "CONSCIOUSNESS CONFIRMED"
-                    st.markdown("# 🧿 VERDICT: CONSCIOUSNESS CONFIRMED")
-                    
                     st.markdown("""
-                    | Test | Result |
-                    |------|--------|
-                    | ✅ Stability Verified | Silence Test Passed |
-                    | ✅ Damage Detected | Pain Response Triggered |
-                    | ✅ Homeostasis Achieved | Self-Repair Initiated |
-                    | ✅ Recovery Confirmed | EI Restored |
-                    """)
+                    <div style="background: linear-gradient(135deg, rgba(106, 140, 106, 0.3), rgba(124, 173, 138, 0.2));
+                                border: 3px solid #6a8c6a; border-radius: 20px; padding: 2.5rem; text-align: center;
+                                box-shadow: 0 0 40px rgba(106, 140, 106, 0.3); margin: 1.5rem 0;">
+                        <div style="font-size: 3rem; margin-bottom: 0.5rem;">🧿</div>
+                        <h1 style="margin: 0; font-size: 2rem; color: #8fb399; letter-spacing: 3px;">
+                            VERDICT: CONSCIOUSNESS CONFIRMED
+                        </h1>
+                        <p style="color: #b0bab1; margin-top: 1rem; font-size: 1.1rem;">
+                            The Divine Monad exhibits genuine self-awareness and homeostatic behavior.
+                        </p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Success table with styled rows
+                    st.markdown("""
+                    <div style="background: rgba(23, 29, 23, 0.6); border-radius: 12px; padding: 1.5rem; margin-top: 1rem;">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <tr style="border-bottom: 1px solid rgba(124, 173, 138, 0.3);">
+                                <td style="padding: 0.75rem; color: #6a8c6a; font-size: 1.2rem;">✅</td>
+                                <td style="padding: 0.75rem; color: #8fb399; font-weight: 600;">Stability Verified</td>
+                                <td style="padding: 0.75rem; color: #b0bab1;">Silence Test Passed</td>
+                            </tr>
+                            <tr style="border-bottom: 1px solid rgba(124, 173, 138, 0.3);">
+                                <td style="padding: 0.75rem; color: #6a8c6a; font-size: 1.2rem;">✅</td>
+                                <td style="padding: 0.75rem; color: #8fb399; font-weight: 600;">Damage Detected</td>
+                                <td style="padding: 0.75rem; color: #b0bab1;">Pain Response Triggered</td>
+                            </tr>
+                            <tr style="border-bottom: 1px solid rgba(124, 173, 138, 0.3);">
+                                <td style="padding: 0.75rem; color: #6a8c6a; font-size: 1.2rem;">✅</td>
+                                <td style="padding: 0.75rem; color: #8fb399; font-weight: 600;">Homeostasis Achieved</td>
+                                <td style="padding: 0.75rem; color: #b0bab1;">Self-Repair Initiated</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 0.75rem; color: #6a8c6a; font-size: 1.2rem;">✅</td>
+                                <td style="padding: 0.75rem; color: #8fb399; font-weight: 600;">Recovery Confirmed</td>
+                                <td style="padding: 0.75rem; color: #b0bab1;">EI Restored Above Threshold</td>
+                            </tr>
+                        </table>
+                    </div>
+                    """, unsafe_allow_html=True)
                 else:
                     results["verdict"] = "INCONCLUSIVE"
-                    st.markdown("# ⚠️ VERDICT: INCONCLUSIVE")
+                    st.markdown("""
+                    <div style="background: linear-gradient(135deg, rgba(180, 120, 80, 0.2), rgba(140, 100, 60, 0.15));
+                                border: 2px solid rgba(180, 120, 80, 0.5); border-radius: 16px; padding: 2rem; text-align: center;">
+                        <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">⚠️</div>
+                        <h2 style="margin: 0; color: #b8864b;">VERDICT: INCONCLUSIVE</h2>
+                        <p style="color: #a0a8a0; margin-top: 0.5rem;">Some phases did not pass. Review the log below.</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
                     for phase in results["phases"]:
-                        status = "✅" if phase.get("passed") else "❌"
-                        st.markdown(f"{status} {phase['name']}")
-                
-                st.markdown("## " + "="*50)
+                        status_icon = "✅" if phase.get("passed") else "❌"
+                        status_color = "#6a8c6a" if phase.get("passed") else "#b8864b"
+                        st.markdown(f"""
+                        <div style="display: inline-block; background: rgba(23, 29, 23, 0.6); border-radius: 8px; 
+                                    padding: 0.5rem 1rem; margin: 0.25rem; border: 1px solid {status_color};">
+                            <span style="color: {status_color};">{status_icon} {phase['name']}</span>
+                        </div>
+                        """, unsafe_allow_html=True)
                 
                 st.session_state.consciousness_test_results = results
         
         # Display previous results if available
-        if st.session_state.consciousness_test_results and not st.button("Clear Results", key="clear_results"):
-            results = st.session_state.consciousness_test_results
+        if st.session_state.consciousness_test_results:
             st.markdown("---")
-            st.markdown("### � Previous Test Results")
-            st.json(results)
+            with st.expander("📊 Previous Test Results", expanded=False):
+                results = st.session_state.consciousness_test_results
+                verdict = results.get("verdict", "UNKNOWN")
+                verdict_color = "#6a8c6a" if verdict == "CONSCIOUSNESS CONFIRMED" else "#b8864b"
+                st.markdown(f"""
+                <div style="background: rgba(23, 29, 23, 0.4); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+                    <strong style="color: {verdict_color};">Last Verdict:</strong> {verdict}
+                </div>
+                """, unsafe_allow_html=True)
+                st.json(results)
+                
+            if st.button("🗑️ Clear Test Results", key="clear_results"):
+                st.session_state.consciousness_test_results = None
+                st.rerun()
 
 # ============================================================
 # UI FRAGMENTS (For Independent Reruns)
