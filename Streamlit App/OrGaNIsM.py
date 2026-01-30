@@ -652,25 +652,80 @@ def fragment_divine_monad():
         else:
             st.caption("No actions recorded yet.")
         
-        # Intervention Buttons
-        st.markdown("**⚔️ Intervention**")
-        int_c1, int_c2, int_c3 = st.columns(3)
-        
-        if int_c1.button("🩸 Lobotomy (4 nodes)", help="Remove 4 hidden nodes"):
-            monad.lobotomize(4)
-            st.toast("⚠️ Lobotomy performed! 4 nodes removed.", icon="🩸")
-            st.rerun()
+        # Advanced Intervention UI
+        st.markdown("**⚔️ Advanced Biological Intervention**")
+        with st.expander("🔬 Open Intervention Console", expanded=True):
+            # Selective Pruning
+            col_p1, col_p2 = st.columns([2, 1])
+            num_to_prune = col_p1.number_input("Nodes to Prune", 1, 10, 2, key="prune_count")
+            if col_p2.button("🩸 Prune Nodes", help="Remove specific number of hidden nodes"):
+                monad.lobotomize(num_to_prune)
+                st.toast(f"⚠️ Lobotomy: {num_to_prune} nodes removed.", icon="🩸")
+                st.rerun()
+
+            st.divider()
+
+            # Targeted Trauma
+            col_t1, col_t2 = st.columns([2, 1])
+            trauma_type = col_t1.selectbox("Trauma Type", ["Structural (Random Synapses)", "Amnesic (Memory Corrupt)"], key="trauma_type")
+            if col_t2.button("💀 Inflict Trauma"):
+                if trauma_type == "Structural (Random Synapses)":
+                    import random
+                    num_edges = monad.graph.edge_index.shape[1]
+                    if num_edges > 5:
+                        for _ in range(5):
+                            # Refresh num_edges as it changes after each prune
+                            curr_edges = monad.graph.edge_index.shape[1]
+                            edge_id = random.randint(0, curr_edges - 1)
+                            monad.mutator.prune_edge(monad.graph, edge_id)
+                        monad.action_log.append("STRUCTURAL_TRAUMA")
+                        st.toast("💀 Synapses severed!", icon="⚡")
+                    else:
+                        st.warning("Too few synapses to prune.")
+                else: # Amnesic
+                    monad.memory.damage(0.5)
+                    monad.action_log.append("AMNESIC_TRAUMA")
+                    st.toast("🌀 Memory corrupted (50%)!", icon="🧠")
+                
+                monad._update_topology_metrics()
+                monad._run_slow_loop()
+                st.rerun()
+
+            st.divider()
+
+            # Resuscitation & Reset
+            col_r1, col_r2, col_r3 = st.columns(3)
             
-        if int_c2.button("💀 Massive Trauma (8 nodes)", help="Severe damage"):
-            monad.lobotomize(8)
-            st.toast("💀 Massive trauma inflicted! 8 nodes removed.", icon="💀")
-            st.rerun()
+            if col_r1.button("💉 Emergency Mitosis", help="Instant injection of 5 nodes & synapses", type="primary"):
+                # Fast growth
+                for _ in range(5):
+                    monad.mutator.grow_node(monad.graph, parent_id=monad.graph.num_input_nodes)
+                
+                # Add random connectivity
+                import random
+                num_nodes = monad.graph.get_num_nodes()
+                for _ in range(8):
+                    src = random.randint(0, num_nodes - 1)
+                    tgt = random.randint(0, num_nodes - 1)
+                    if src != tgt:
+                        monad.mutator.add_edge(monad.graph, src, tgt)
+                
+                monad.action_log.append("EMERGENCY_MITOSIS")
+                monad._update_topology_metrics()
+                monad._run_slow_loop()
+                st.toast("💉 Resuscitation successful! Organism growing.", icon="🌱")
+                st.rerun()
+
+            if col_r2.button("♻️ Reincarnate", help="Full Monad Reset"):
+                del st.session_state.monad
+                del st.session_state.voice
+                st.toast("Monad reborn from void.", icon="♻️")
+                st.rerun()
             
-        if int_c3.button("♻️ Reincarnate", help="Reset the entire Monad"):
-            del st.session_state.monad
-            del st.session_state.voice
-            st.toast("Monad has been reborn.", icon="♻️")
-            st.rerun()
+            if col_r3.button("🧠 Self-Repair", help="Trigger autonomous repair cycle"):
+                monad._trigger_repair()
+                st.toast("Repair sequence forced.")
+                st.rerun()
         
         # State Tensor Visualization
         with st.expander("🔬 Internal State Tensor", expanded=False):
