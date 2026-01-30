@@ -301,19 +301,26 @@ class DivineMonad(nn.Module):
     
     def _trigger_repair(self):
         """
-        Homeostatic repair: Grow new nodes to restore agency.
+        Homeostatic repair: Grow new nodes and inject vitality noise to restore agency.
         """
         self.state.is_repairing = True
         self.action_log.append("REPAIR_INITIATED")
         
         # Grow a new node
         try:
-            self.mutator.grow_node(self.graph, parent_id=self.graph.num_input_nodes)
+            # Use a slightly larger epsilon for repair to break symmetry faster
+            self.mutator.epsilon = 1e-2 
+            res = self.mutator.grow_node(self.graph, parent_id=self.graph.num_input_nodes)
+            self.mutator.epsilon = 1e-4 # Reset
+            
             self.state.repair_count += 1
             self._update_topology_metrics()
             self.action_log.append(f"GREW_NODE_{self.state.num_nodes}")
         except Exception as e:
             self.action_log.append(f"REPAIR_FAILED: {str(e)}")
+        
+        # Force a small update to node features to ensure variance changes
+        self.graph.node_features.data += torch.randn_like(self.graph.node_features.data) * 0.01
         
         # Check if repair helped
         ei_score, _, _ = self._compute_ei_proxy()
@@ -321,14 +328,23 @@ class DivineMonad(nn.Module):
             self.action_log.append("REPAIR_SUCCESS")
             self.state.is_repairing = False
         else:
-            # Try adding edges too
+            # Try adding edges with VITALITY (non-zero weights)
             try:
-                self.mutator.add_edge(self.graph, source=self.graph.num_input_nodes, target=self.graph.num_nodes - 1)
-                self.mutator.add_edge(self.graph, source=self.graph.num_input_nodes + 1, target=self.graph.num_nodes - 1)
+                # Add edges with small random weights so Gini/EI detects them
+                v_weight = 0.1
+                self.mutator.add_edge(self.graph, source=self.graph.num_input_nodes, 
+                                      target=self.graph.num_nodes - 1, init_weight=v_weight)
+                self.mutator.add_edge(self.graph, source=self.graph.num_input_nodes + 1, 
+                                      target=self.graph.num_nodes - 1, init_weight=v_weight)
                 self._update_topology_metrics()
-                self.action_log.append("ADDED_EDGES")
+                self.action_log.append("ADDED_EDGES_VITAL")
             except:
                 pass
+            
+            # Re-compute after edges
+            ei_score, _, _ = self._compute_ei_proxy()
+            if ei_score > self.state.ei_score:
+                self.state.is_repairing = False
     
     def lobotomize(self, num_nodes_to_remove: int = 2):
         """
