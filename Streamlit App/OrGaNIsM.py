@@ -50,12 +50,34 @@ from core import PlasticCortex
 from plasticity_network import PlasticityNetwork
 from meta_learner import MetaLearner
 
-# --- DIVINE MONAD IMPORTS ---
+# --- DIVINE MONAD IMPORTS (ALL 4 PHASES) ---
 try:
-    from Divine_Monad.phase4_iam.monad import DivineMonad, MonadConfig
-    from Divine_Monad.phase4_iam.voicebox import VoiceBox
+    # Phase 1: Causal Monitor (Soul - Agency Measurement)
+    from Divine_Monad.phase1_causal_monitor import (
+        MicroCausalNet, create_xor_net,
+        binary_entropy, calc_micro_ei, calc_macro_ei, calc_emergence_score,
+        SumPartition, LearnablePartition,
+        TrainingConfig, train_emergence
+    )
+    
+    # Phase 2: Topological Computing (Body - Dynamic Graph)
+    from Divine_Monad.phase2_topological import (
+        DynamicGraphNet, TopologicalMutator, MutationResult,
+        HybridOptimizer, HybridConfig
+    )
+    
+    # Phase 3: Holographic Memory (Mind - Distributed Storage)
+    from Divine_Monad.phase3_holographic import (
+        Hypervector, Codebook, Transducer, NeuralKV
+    )
+    
+    # Phase 4: I Am (Self-Awareness & Consciousness)
+    from Divine_Monad.phase4_iam.monad import DivineMonad, MonadConfig, MonadState
+    from Divine_Monad.phase4_iam.voicebox import VoiceBox, VoiceThresholds
+    from Divine_Monad.phase4_iam.introspection import FourierEncoder, IntrospectionEncoder, SelfState
+    
     DIVINE_MONAD_AVAILABLE = True
-except ImportError:
+except ImportError as e:
     DIVINE_MONAD_AVAILABLE = False
 
 # --- CUSTOM CSS FOR A PREMIUM DARK THEME ---
@@ -488,12 +510,16 @@ def fragment_divine_monad():
     with action_col:
         st.metric("🔄 Repairs", info.get('repair_count', 0))
     
-    # === PHASE TABS ===
-    tab_soul, tab_body, tab_mind, tab_self = st.tabs([
-        "� P1: Soul (Causal)",
-        "� P2: Body (Topology)", 
-        "� P3: Mind (Holographic)",
-        "� P4: Self (Homeostasis)"
+    # === PHASE TABS (8 Total: 4 Core + 4 Advanced) ===
+    tab_soul, tab_body, tab_mind, tab_self, tab_causal_train, tab_hybrid_opt, tab_hdc_demo, tab_intro_adv = st.tabs([
+        "🔮 P1: Soul (Causal)",
+        "🧬 P2: Body (Topology)", 
+        "🧠 P3: Mind (Holographic)",
+        "🪞 P4: Self (Homeostasis)",
+        "⚗️ Train Emergence",
+        "🔧 Optimize Topology",
+        "🌀 HDC Operations",
+        "🔬 Introspection"
     ])
     
     # === PHASE 1: THE SOUL (Causal Monitor) ===
@@ -662,6 +688,328 @@ def fragment_divine_monad():
                 })
             except:
                 st.caption("State unavailable.")
+    
+    # === TAB 5: CAUSAL EMERGENCE TRAINING (Phase 1 Advanced) ===
+    with tab_causal_train:
+        st.subheader("⚗️ Phase 1: Causal Emergence Training")
+        st.caption("*Train a micro-network to maximize EI_macro - EI_micro (Causal Emergence).*")
+        
+        st.markdown("""
+        > **Goal**: Prove that the macro-level description has MORE causal power than the micro-level.
+        > A positive emergence score means \"the whole is greater than the sum of its parts.\"
+        """)
+        
+        # Training Configuration
+        p1_col1, p1_col2, p1_col3, p1_col4 = st.columns(4)
+        with p1_col1:
+            p1_epochs = st.number_input("Epochs", 100, 5000, 500, step=100, key="p1_epochs")
+        with p1_col2:
+            p1_lr = st.number_input("Learning Rate", 0.001, 0.1, 0.01, step=0.005, format="%.3f", key="p1_lr")
+        with p1_col3:
+            p1_hidden = st.number_input("Hidden Dim", 4, 32, 8, key="p1_hidden")
+        with p1_col4:
+            p1_evolve = st.checkbox("Evolve Partition", key="p1_evolve", 
+                                    help="Use evolutionary mutations to find optimal coarse-graining")
+        
+        # Session state for training results
+        if "p1_results" not in st.session_state:
+            st.session_state.p1_results = None
+        if "p1_net" not in st.session_state:
+            st.session_state.p1_net = None
+        
+        if st.button("🧪 Train for Causal Emergence", key="train_emergence_btn"):
+            config = TrainingConfig(
+                num_inputs=4,
+                lr=p1_lr,
+                num_epochs=p1_epochs,
+                evolve_partition=p1_evolve,
+                log_every=p1_epochs  # Suppress intermediate logs
+            )
+            net = MicroCausalNet(num_inputs=4, hidden_dim=p1_hidden)
+            
+            with st.spinner(f"Training for {p1_epochs} epochs..."):
+                results = train_emergence(config, net=net, verbose=False)
+            
+            st.session_state.p1_results = results
+            st.session_state.p1_net = results['net']
+            st.toast(f"Training Complete! Emergence: {results['final_emergence']:.4f} bits", icon="✅")
+        
+        # Display Results
+        if st.session_state.p1_results:
+            results = st.session_state.p1_results
+            
+            res_col1, res_col2, res_col3, res_col4 = st.columns(4)
+            res_col1.metric("🔬 EI Micro", f"{results['final_ei_micro']:.4f} bits")
+            res_col2.metric("🔭 EI Macro", f"{results['final_ei_macro']:.4f} bits")
+            res_col3.metric("✨ Emergence", f"{results['final_emergence']:.4f} bits", 
+                           delta="Positive = Success!" if results['final_emergence'] > 0 else "Negative")
+            res_col4.metric("📈 Best", f"{results['best_emergence']:.4f} bits")
+            
+            # Training curve
+            if results['history']['emergence_score']:
+                st.line_chart(results['history']['emergence_score'], use_container_width=True)
+            
+            if results['final_emergence'] > 0:
+                st.success("🎉 **CAUSAL EMERGENCE ACHIEVED!** The macro-level has more causal power!")
+            else:
+                st.warning("Emergence negative. Try more epochs or enable partition evolution.")
+        
+        # Quick XOR Demo
+        with st.expander("🔀 XOR Network Demo (Pre-configured)", expanded=False):
+            st.caption("XOR is a classic example where macro-level understanding helps.")
+            if st.button("Create XOR Network", key="xor_btn"):
+                xor_net = create_xor_net()
+                xor_inputs = xor_net.get_all_input_states()
+                ei_micro = calc_micro_ei(xor_net, xor_inputs)
+                partition = SumPartition(num_inputs=2)
+                ei_macro = calc_macro_ei(xor_net, xor_inputs, partition)
+                emergence = calc_emergence_score(xor_net, xor_inputs, partition)
+                
+                st.metric("XOR EI Micro", f"{ei_micro.item():.4f}")
+                st.metric("XOR EI Macro", f"{ei_macro.item():.4f}")
+                st.metric("XOR Emergence", f"{emergence.item():.4f}")
+    
+    # === TAB 6: HYBRID TOPOLOGY OPTIMIZER (Phase 2 Advanced) ===
+    with tab_hybrid_opt:
+        st.subheader("🔧 Phase 2: Hybrid Topology Optimization")
+        st.caption("*Inner loop (SGD) + Outer loop (Mutations) = Optimal Topology*")
+        
+        st.markdown("""
+        > **Architecture**: Train weights until convergence, then mutate topology to unlock new capacity.
+        > This mimics biological neural development where structure and function co-evolve.
+        """)
+        
+        # Configuration
+        h_col1, h_col2, h_col3, h_col4 = st.columns(4)
+        with h_col1:
+            h_inner_steps = st.number_input("Inner Steps", 10, 500, 50, key="h_inner")
+        with h_col2:
+            h_outer_steps = st.number_input("Outer Steps", 1, 50, 5, key="h_outer")
+        with h_col3:
+            h_inner_lr = st.number_input("Inner LR", 0.001, 0.1, 0.01, format="%.3f", key="h_lr")
+        with h_col4:
+            h_mut_prob = st.slider("Mutation Prob", 0.0, 1.0, 0.3, key="h_mut")
+        
+        # Session state for hybrid results
+        if "h_results" not in st.session_state:
+            st.session_state.h_results = None
+        
+        if st.button("🔬 Run Hybrid Optimization on Monad's Graph", key="hybrid_opt_btn"):
+            config = HybridConfig(
+                inner_lr=h_inner_lr,
+                inner_steps=h_inner_steps,
+                outer_steps=h_outer_steps,
+                mutation_prob=h_mut_prob,
+                verbose=False
+            )
+            
+            # Create a small test task
+            test_input = torch.tensor([1.0, 0.0, 1.0, 0.0])
+            test_target = torch.tensor([0.7])
+            
+            def mse_loss(outputs, targets):
+                return ((outputs - targets) ** 2).mean()
+            
+            with st.spinner(f"Running {h_outer_steps} outer iterations..."):
+                optimizer = HybridOptimizer(monad.graph, mse_loss, config)
+                results = optimizer.optimize(test_input, test_target)
+            
+            st.session_state.h_results = results
+            st.toast(f"Optimization Complete! Final Fitness: {results['final_fitness']:.4f}", icon="✅")
+        
+        # Display Results
+        if st.session_state.h_results:
+            results = st.session_state.h_results
+            
+            hr_col1, hr_col2, hr_col3, hr_col4 = st.columns(4)
+            hr_col1.metric("🎯 Final Fitness", f"{results['final_fitness']:.4f}")
+            hr_col2.metric("🏆 Best Fitness", f"{results['best_fitness']:.4f}")
+            hr_col3.metric("🔵 Final Nodes", results['final_nodes'])
+            hr_col4.metric("🔗 Final Edges", results['final_edges'])
+            
+            # Fitness history
+            if results['history']['outer_fitness']:
+                st.line_chart(results['history']['outer_fitness'], use_container_width=True)
+            
+            # Mutation log
+            if results['history']['mutations']:
+                with st.expander("📜 Mutation History", expanded=False):
+                    for mut in results['history']['mutations']:
+                        st.code(mut)
+    
+    # === TAB 7: HDC OPERATIONS DEMO (Phase 3 Advanced) ===
+    with tab_hdc_demo:
+        st.subheader("🌀 Phase 3: Hyperdimensional Computing Demo")
+        st.caption("*Interactive exploration of Vector Symbolic Architecture operations.*")
+        
+        st.markdown("""
+        > **Key Insight**: In D=10,000 dimensions, random vectors are NEARLY ORTHOGONAL.
+        > This enables robust, distributed memory that survives partial damage.
+        """)
+        
+        # Session state for HDC vectors
+        if "hdc_vectors" not in st.session_state:
+            st.session_state.hdc_vectors = {}
+        
+        hdc_col1, hdc_col2 = st.columns(2)
+        with hdc_col1:
+            hdc_dim = st.slider("Hypervector Dimension", 1000, 10000, 5000, step=1000, key="hdc_dim")
+        with hdc_col2:
+            hdc_type = st.radio("Vector Type", ["Real-valued", "Bipolar (+1/-1)"], key="hdc_type")
+        
+        if st.button("🎲 Generate Random A, B, C", key="gen_hv"):
+            if hdc_type == "Real-valued":
+                st.session_state.hdc_vectors = {
+                    'A': Hypervector.random(hdc_dim),
+                    'B': Hypervector.random(hdc_dim),
+                    'C': Hypervector.random(hdc_dim)
+                }
+            else:
+                st.session_state.hdc_vectors = {
+                    'A': Hypervector.random_bipolar(hdc_dim),
+                    'B': Hypervector.random_bipolar(hdc_dim),
+                    'C': Hypervector.random_bipolar(hdc_dim)
+                }
+            st.toast("3 random hypervectors generated!", icon="🎲")
+        
+        if st.session_state.hdc_vectors:
+            A = st.session_state.hdc_vectors['A']
+            B = st.session_state.hdc_vectors['B']
+            C = st.session_state.hdc_vectors['C']
+            
+            st.markdown("### 📊 Similarity Matrix (should be ~0 for random vectors)")
+            sim_col1, sim_col2, sim_col3 = st.columns(3)
+            sim_col1.metric("sim(A, B)", f"{A.similarity(B):.4f}")
+            sim_col2.metric("sim(A, C)", f"{A.similarity(C):.4f}")
+            sim_col3.metric("sim(B, C)", f"{B.similarity(C):.4f}")
+            
+            st.markdown("### 🔗 Bind Operation (A ⊗ B)")
+            bound = A.bind(B)
+            bind_col1, bind_col2, bind_col3 = st.columns(3)
+            bind_col1.metric("sim(A, A⊗B)", f"{A.similarity(bound):.4f}", help="Should be ~0 (orthogonal)")
+            bind_col2.metric("sim(B, A⊗B)", f"{B.similarity(bound):.4f}", help="Should be ~0 (orthogonal)")
+            # Test unbind (self-inverse property)
+            unbound = bound.unbind(B)
+            bind_col3.metric("sim(A, unbind(A⊗B, B))", f"{A.similarity(unbound):.4f}", 
+                            help="For bipolar: ~1.0; for real: variable")
+            
+            st.markdown("### ➕ Bundle Operation (A + B)")
+            bundled = A.bundle(B)
+            bund_col1, bund_col2, bund_col3 = st.columns(3)
+            bund_col1.metric("sim(A, A+B)", f"{A.similarity(bundled):.4f}", help="Should be positive (~0.5)")
+            bund_col2.metric("sim(B, A+B)", f"{B.similarity(bundled):.4f}", help="Should be positive (~0.5)")
+            bund_col3.metric("sim(C, A+B)", f"{C.similarity(bundled):.4f}", help="Should be ~0 (unrelated)")
+            
+            st.markdown("### 🔄 Permute Operation")
+            perm_col1, perm_col2, perm_col3 = st.columns(3)
+            perm1 = A.permute(1)
+            perm2 = A.permute(2)
+            perm_col1.metric("sim(A, permute(A,1))", f"{A.similarity(perm1):.4f}", help="Should be ~0")
+            perm_col2.metric("sim(A, permute(A,2))", f"{A.similarity(perm2):.4f}", help="Should be ~0")
+            # Inverse permute
+            unperm = perm1.permute(-1)
+            perm_col3.metric("sim(A, permute(perm(A,1),-1))", f"{A.similarity(unperm):.4f}", help="Should be ~1.0")
+        
+        # Codebook Demo
+        with st.expander("📚 Codebook Cleanup Demo", expanded=False):
+            if st.button("Create Codebook (100 items)", key="create_cb"):
+                st.session_state.codebook = Codebook(num_items=100, dim=hdc_dim)
+                st.toast("Codebook created!", icon="📚")
+            
+            if "codebook" in st.session_state and st.session_state.hdc_vectors:
+                cb = st.session_state.codebook
+                # Test cleanup with vector A
+                clean_vec, clean_idx, clean_sim = cb.cleanup(A)
+                st.metric(f"Cleanup(A) → item_{clean_idx}", f"sim={clean_sim:.4f}")
+    
+    # === TAB 8: ADVANCED INTROSPECTION (Phase 4 Advanced) ===
+    with tab_intro_adv:
+        st.subheader("🔬 Phase 4: Advanced Introspection Controls")
+        st.caption("*Fine-tune self-awareness thresholds and visualize Fourier encoding.*")
+        
+        st.markdown("""
+        > **The \"Pineal Gland\"**: Transforms raw scalar metrics into high-frequency features
+        > that the network can \"feel\" precisely. Overcomes neural network spectral bias.
+        """)
+        
+        # Custom VoiceThresholds
+        st.markdown("### 🎚️ Voice Thresholds Configuration")
+        st.caption("Customize how the VoiceBox interprets the Monad's state.")
+        
+        vt_col1, vt_col2, vt_col3 = st.columns(3)
+        with vt_col1:
+            vt_critical = st.slider("EI Critical Level", 0.0, 0.5, 0.2, key="vt_crit",
+                                   help="Below this = existential crisis")
+        with vt_col2:
+            vt_low = st.slider("EI Low Level", 0.2, 0.6, 0.4, key="vt_low",
+                              help="Below this = distress")
+        with vt_col3:
+            vt_healthy = st.slider("EI Healthy Level", 0.4, 1.0, 0.6, key="vt_healthy",
+                                  help="Above this = stable")
+        
+        if st.button("Apply Custom Thresholds", key="apply_vt"):
+            new_thresholds = VoiceThresholds(
+                ei_critical=vt_critical,
+                ei_low=vt_low,
+                ei_healthy=vt_healthy
+            )
+            st.session_state.voice = VoiceBox(thresholds=new_thresholds)
+            st.toast("Voice thresholds updated!", icon="🎚️")
+        
+        st.markdown("---")
+        
+        # Manual SelfState Override
+        st.markdown("### 🧠 Manual Self-State Override")
+        st.caption("Manually set internal state values to test the introspection encoder.")
+        
+        ss_col1, ss_col2 = st.columns(2)
+        with ss_col1:
+            ss_ei = st.slider("EI Score", 0.0, 1.0, 0.5, key="ss_ei")
+            ss_nodes = st.slider("Node Count (normalized)", 0.0, 1.0, 0.5, key="ss_nodes")
+            ss_density = st.slider("Edge Density", 0.0, 1.0, 0.3, key="ss_density")
+        with ss_col2:
+            ss_noise = st.slider("Memory Noise", 0.0, 1.0, 0.0, key="ss_noise")
+            ss_surprise = st.slider("Surprise Level", 0.0, 1.0, 0.0, key="ss_surp")
+        
+        if st.button("🔬 Encode State via Fourier Features", key="encode_state"):
+            state = SelfState(
+                ei_score=ss_ei,
+                node_count=ss_nodes,
+                edge_density=ss_density,
+                memory_noise=ss_noise,
+                surprise=ss_surprise
+            )
+            encoded = monad.introspector(state)
+            
+            st.markdown("**Fourier-Encoded Self-State Vector:**")
+            st.bar_chart(encoded.detach().numpy(), use_container_width=True)
+            st.caption(f"Output dimension: {encoded.shape[0]}, Norm: {encoded.norm().item():.4f}")
+        
+        # MonadState Viewer
+        st.markdown("---")
+        st.markdown("### 📋 Current MonadState (Full Details)")
+        try:
+            state = monad.state
+            state_dict = {
+                "ei_score": round(state.ei_score, 4),
+                "ei_micro": round(state.ei_micro, 4),
+                "ei_macro": round(state.ei_macro, 4),
+                "num_nodes": state.num_nodes,
+                "num_edges": state.num_edges,
+                "edge_density": round(state.edge_density, 4),
+                "memory_items": state.memory_items,
+                "memory_noise": round(state.memory_noise, 4),
+                "surprise": round(state.surprise, 4),
+                "prediction_error": round(state.prediction_error, 4),
+                "pain_level": round(state.pain_level, 4),
+                "is_repairing": state.is_repairing,
+                "repair_count": state.repair_count,
+                "step_count": state.step_count,
+                "last_slow_loop": state.last_slow_loop
+            }
+            st.json(state_dict)
+        except Exception as e:
+            st.warning(f"Could not read MonadState: {e}")
 
 # ============================================================
 # UI FRAGMENTS (For Independent Reruns)
