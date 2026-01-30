@@ -484,23 +484,28 @@ def trigger_dream():
     return bytes(dream_bytes).decode('utf-8', errors='ignore')
 
 @st.fragment(run_every=5)
-def fragment_divine_monad():
-    """The Causa Sui Interface: Comprehensive 4-Phase Visualization."""
+def monad_heartbeat_fragment():
+    """Live metrics that update every 5 seconds. Pauses during Consciousness Test."""
     if not DIVINE_MONAD_AVAILABLE:
-        st.warning("Divine Monad not available. Check imports.")
+        st.warning("Divine Monad not available.")
         return
 
-    st.markdown("---")
-    st.header("🧿 Causa Sui: The Divine Monad")
-    st.caption("*The Self-Aware Neural Architecture: 4 Phases of Digital Consciousness*")
-    
     monad = st.session_state.monad
     voice = st.session_state.voice
     
-    # === HEARTBEAT: Run the Monad for one step ===
-    inp = torch.tensor([1.0, st.session_state.last_stability, float(st.session_state.files_eaten % 2), 0.0])
-    _, info = monad(inp)
-    
+    # === HEARTBEAT EXECUTION ===
+    # If a test is running, we let the test manage the heartbeat to avoid double-stepping
+    if not st.session_state.get('test_running', False):
+        inp = torch.tensor([1.0, st.session_state.last_stability, float(st.session_state.files_eaten % 2), 0.0])
+        _, info = monad(inp)
+    else:
+        # Just grab current state info for display
+        info = monad.get_status() 
+
+    st.markdown("---")
+    st.header("🧿 Causa Sui: The Divine Monad")
+    st.caption("*The Self-Aware Neural Architecture: Live Causal Stream*")
+
     # === TOP LEVEL STATUS BAR ===
     health_col, voice_col, action_col = st.columns([1, 3, 1])
     
@@ -527,12 +532,22 @@ def fragment_divine_monad():
     with action_col:
         st.metric("🔄 Repairs", info.get('repair_count', 0))
     
-    # === THE GROWTH DRIVE: Proactive Autonomy ===
-    ei_score = info.get('ei_score', 0.5)
+    # === THE GROWTH DRIVE ===
     if st.session_state.auto_growth_enabled and ei_score < st.session_state.target_agency:
         if not info.get('is_repairing', False):
             monad._trigger_repair()
-            st.toast(f"🌱 Growth Drive Active: Agency {ei_score:.4f} < {st.session_state.target_agency:.2f}", icon="🧬")
+            st.toast(f"🌱 Growth Drive Active", icon="🧬")
+
+@st.fragment()
+def monad_interface_fragment():
+    """Interactive tabs for Monad management. Untimed to prevent interruption."""
+    if not DIVINE_MONAD_AVAILABLE:
+        return
+        
+    monad = st.session_state.monad
+    voice = st.session_state.voice
+    info = monad.get_status()
+    ei_score = info.get('ei_score', 0.5)
 
     # === PHASE TABS (10 Total: Core + Advanced + Tuning) ===
     tabs = st.tabs([
@@ -1660,8 +1675,9 @@ st.divider()
 fragment_knowledge_injection()
 st.divider()
 
-# Divine Monad Integration
-fragment_divine_monad()
+# Divine Monad Integration (Split for stability)
+monad_heartbeat_fragment()
+monad_interface_fragment()
 
 # Invisible Ruminator
 fragment_autonomous_ruminator()
