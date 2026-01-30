@@ -504,15 +504,25 @@ def fragment_divine_monad():
     # === TOP LEVEL STATUS BAR ===
     health_col, voice_col, action_col = st.columns([1, 3, 1])
     
+    ei_score = info.get('ei_score', 0.5)
+    num_nodes = info.get('num_nodes', 5)
+    is_braindead = num_nodes <= 5 and ei_score < 0.15
+
     with health_col:
         pain = info.get('pain_level', 0.0)
-        if pain > 0:
+        if is_braindead:
+            st.markdown("### 💀")
+        elif pain > 0:
             st.error(f"🩸 PAIN: {pain:.2f}")
         else:
             st.success("✅ CALM")
     
     with voice_col:
-        st.info(f"**💬 Monad Speaks**: \"{voice.speak(monad.get_status())}\"")
+        if is_braindead:
+            st.info("**💬 Monad Speaks**: \"... (Silence) ...\"")
+            st.warning("⚠️ **BRAIN DEAD**: Structure too simple for Agency.")
+        else:
+            st.info(f"**💬 Monad Speaks**: \"{voice.speak(monad.get_status())}\"")
     
     with action_col:
         st.metric("🔄 Repairs", info.get('repair_count', 0))
