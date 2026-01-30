@@ -1642,8 +1642,8 @@ def fragment_consciousness_test_section():
             mean_ei = sum(ei_samples) / len(ei_samples) if ei_samples else 0.5
             std_ei = (sum((x - mean_ei)**2 for x in ei_samples) / len(ei_samples)) ** 0.5 if len(ei_samples) > 1 else 0.05
             
-            # Set calibrated pain threshold (95% of mean or 2 sigma, whichever is more resilient)
-            pain_threshold = min(mean_ei * 0.95, mean_ei - 2 * std_ei)
+            # Set calibrated pain threshold (99.9% of mean or 2 sigma, whichever is more sensitive)
+            pain_threshold = min(mean_ei * 0.999, mean_ei - 2 * std_ei)
             pain_threshold = max(0.01, pain_threshold)
             
             # SYNC TO MONAD CONFIG
