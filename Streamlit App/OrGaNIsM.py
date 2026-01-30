@@ -712,16 +712,20 @@ def fragment_divine_monad():
             if col_r1.button("💉 Emergency Mitosis", help="Instant injection of 5 nodes & synapses", type="primary"):
                 # Fast growth
                 for _ in range(5):
+                    monad.mutator.epsilon = 0.05
                     monad.mutator.grow_node(monad.graph, parent_id=monad.graph.num_input_nodes)
                 
-                # Add random connectivity
+                # Add random connectivity with VITALITY
                 import random
                 num_nodes = monad.graph.get_num_nodes()
                 for _ in range(8):
                     src = random.randint(0, num_nodes - 1)
                     tgt = random.randint(0, num_nodes - 1)
                     if src != tgt:
-                        monad.mutator.add_edge(monad.graph, src, tgt)
+                        monad.mutator.add_edge(monad.graph, src, tgt, init_weight=0.15)
+                
+                # Shake node features to trigger micro-EI growth
+                monad.graph.node_features.data += torch.randn_like(monad.graph.node_features.data) * 0.05
                 
                 monad.action_log.append("EMERGENCY_MITOSIS")
                 monad._update_topology_metrics()
