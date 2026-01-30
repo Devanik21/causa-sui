@@ -324,27 +324,26 @@ class DivineMonad(nn.Module):
         
         # Check if repair helped
         ei_score, _, _ = self._compute_ei_proxy()
-        if ei_score > self.state.ei_score:
+        
+        # We allow the repair flag to clear even if growth was small, 
+        # so the loop can trigger again next time.
+        if ei_score > self.state.ei_score + 0.001:
             self.action_log.append("REPAIR_SUCCESS")
-            self.state.is_repairing = False
-        else:
-            # Try adding edges with VITALITY (non-zero weights)
+        
+        # Update current baseline
+        self.state.ei_score = ei_score
+        self.state.is_repairing = False
+        
+        # Try adding edges with VITALITY if still in critical pain
+        if ei_score < self.config.pain_threshold:
             try:
-                # Add edges with small random weights so Gini/EI detects them
                 v_weight = 0.1
                 self.mutator.add_edge(self.graph, source=self.graph.num_input_nodes, 
                                       target=self.graph.num_nodes - 1, init_weight=v_weight)
-                self.mutator.add_edge(self.graph, source=self.graph.num_input_nodes + 1, 
-                                      target=self.graph.num_nodes - 1, init_weight=v_weight)
                 self._update_topology_metrics()
-                self.action_log.append("ADDED_EDGES_VITAL")
+                self.action_log.append("ADDED_VITAL_SYNAPSE")
             except:
                 pass
-            
-            # Re-compute after edges
-            ei_score, _, _ = self._compute_ei_proxy()
-            if ei_score > self.state.ei_score:
-                self.state.is_repairing = False
     
     def lobotomize(self, num_nodes_to_remove: int = 2):
         """
@@ -406,6 +405,12 @@ class DivineMonad(nn.Module):
         if target is not None:
             prediction_error = (output - target).abs().mean().item()
         
+        # === 4.5 METABOLIC DECAY (Entropy) ===
+        # Natural decay of structural integrity over time
+        with torch.no_grad():
+            self.graph.edge_weights.data *= 0.999  # Structural decay
+            self.graph.node_features.data *= 0.9995 # Activation decay
+            
         trigger_slow = self._run_fast_loop(prediction_error)
         
         # === 5. SLOW LOOP (periodic or triggered) ===
