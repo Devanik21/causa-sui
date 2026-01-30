@@ -749,7 +749,7 @@ def fragment_divine_monad():
             
             # Training curve
             if results['history']['emergence_score']:
-                st.line_chart(results['history']['emergence_score'], use_container_width=True)
+                st.line_chart(results['history']['emergence_score'], width='stretch')
             
             if results['final_emergence'] > 0:
                 st.success("🎉 **CAUSAL EMERGENCE ACHIEVED!** The macro-level has more causal power!")
@@ -831,7 +831,7 @@ def fragment_divine_monad():
             
             # Fitness history
             if results['history']['outer_fitness']:
-                st.line_chart(results['history']['outer_fitness'], use_container_width=True)
+                st.line_chart(results['history']['outer_fitness'], width='stretch')
             
             # Mutation log
             if results['history']['mutations']:
@@ -984,7 +984,7 @@ def fragment_divine_monad():
             encoded = monad.introspector(state)
             
             st.markdown("**Fourier-Encoded Self-State Vector:**")
-            st.bar_chart(encoded.detach().numpy(), use_container_width=True)
+            st.bar_chart(encoded.detach().numpy(), width='stretch')
             st.caption(f"Output dimension: {encoded.shape[0]}, Norm: {encoded.norm().item():.4f}")
         
         # MonadState Viewer
