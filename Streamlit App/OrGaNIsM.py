@@ -477,6 +477,7 @@ def trigger_dream():
     
     return bytes(dream_bytes).decode('utf-8', errors='ignore')
 
+@st.fragment(run_every=5)
 def fragment_divine_monad():
     """The Causa Sui Interface: Comprehensive 4-Phase Visualization."""
     if not DIVINE_MONAD_AVAILABLE:
