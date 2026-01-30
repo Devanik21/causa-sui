@@ -195,44 +195,103 @@ class DivineMonad(nn.Module):
         self.state.prediction_error = 0.0
         self.action_log = ["STATE_RESET"]
 
-    def _compute_ei_proxy(self) -> Tuple[float, float, float]:
+    def _compute_true_ei(self) -> Tuple[float, float, float]:
         """
-        Compute Effective Information (simplified proxy).
+        Compute True Effective Information (Hoel's Definition).
         
-        Full EI calculation is expensive. We use a proxy based on
-        graph connectivity and node activation variance.
+        Formula: EI = H(<TPM>) - <H(TPM)>
         
-        Returns:
-            (ei_score, ei_micro, ei_macro)
+        Since the network is deterministic, <H(TPM)> = 0.
+        Thus, EI = Entropy of the Effect Distribution under Uniform Intervention.
+        
+        Constraints:
+        - We calculate this on the "Core" subgraph (top 8 active nodes)
+        - We use binarized states (Active > 0.1 / Reference point)
         """
+        # 1. Select Core Subgraph (Top K nodes by activation variance or degree)
+        K = 8 # Limit for CPU (2^8 = 256 interventions)
+        
         with torch.no_grad():
-            # 1. EI_MICRO: Node activation variance
-            # We add a small baseline and scale to ensure non-zero if graph is "alive"
-            node_var = self.graph.node_features.var(dim=0).mean().item()
-            ei_micro = min(1.0, 0.1 + node_var * 10)  # Baseline 0.1
+            num_nodes = self.graph.get_num_nodes()
+            if num_nodes < K:
+                K = num_nodes
             
-            # 2. EI_MACRO: Connectivity structure (Concentration/Gini)
-            edge_weights = self.graph.edge_weights.abs()
-            if edge_weights.numel() > 1:
-                # Gini coefficient approximation
-                sorted_weights = edge_weights.flatten().sort()[0]
-                n = sorted_weights.numel()
-                index = torch.arange(1, n + 1, dtype=torch.float32)
-                gini = (2 * (index * sorted_weights).sum() - (n + 1) * sorted_weights.sum()) / (n * sorted_weights.sum() + 1e-8)
-                ei_macro = min(1.0, max(0.0, gini.item()))
-            elif edge_weights.numel() == 1:
-                ei_macro = 0.2 # Small bonus for having any connection
-            else:
-                ei_macro = 0.0
+            # Identify "Soul Nodes" (High degree centrality)
+            # Sum of absolute edge weights connected to each node
+            adj = torch.zeros(num_nodes, device=self.graph.edge_weights.device)
+            src, tgt = self.graph.edge_index
+            weights = self.graph.edge_weights.abs().squeeze()
             
-            # 3. EI_SCORE: Emergence calculation
-            # If structure (macro) is significantly stronger than noise (micro), emergence is high.
-            # Base score is macro-driven, with a bonus for the macro/micro ratio
-            ratio = ei_macro / (ei_micro + 1e-8)
-            emergence_bonus = 0.5 if ratio > 1.2 else 0.0
-            ei_score = min(1.0, 0.5 * ei_macro + emergence_bonus)
+            # Scatter add weights to source and target nodes
+            adj.index_add_(0, src, weights)
+            adj.index_add_(0, tgt, weights)
             
-        return ei_score, ei_micro, ei_macro
+            # Get indices of top K nodes
+            _, core_indices = torch.topk(adj, K)
+            core_indices = core_indices.sort()[0] # Sort for consistency
+            
+            # Save current state (Architecture of Anxiety)
+            saved_state = self.graph.node_features.clone()
+            
+            # 2. Maximum Entropy Intervention (2^K states)
+            # Generate all binary patterns
+            import itertools
+            interventions = list(itertools.product([0, 1], repeat=K))
+            
+            effect_counts = {}
+            total_states = len(interventions)
+            
+            # Threshold for binarization
+            threshold = 0.0
+            
+            for pattern in interventions:
+                # RESET to a neutral slate for intervention
+                # We zero out everything to measure PURE causal power of the core
+                self.graph.node_features.zero_()
+                
+                # Apply intervention state
+                for i, bit in enumerate(pattern):
+                    idx = core_indices[i]
+                    # If bit is 1, set to high activation (e.g., 1.0)
+                    # If 0, leave at 0
+                    if bit == 1:
+                        self.graph.node_features[idx, 0] = 1.0
+                
+                # Step the dynamics ONE step
+                _, next_state = self.graph(None)
+                
+                # Read Effect (Binarize output of SAME core nodes)
+                # "Causal Closure" assumption for EI
+                effect_bits = []
+                for idx in core_indices:
+                    val = next_state[idx, 0].item()
+                    effect_bits.append(1 if val > threshold else 0)
+                
+                effect_tuple = tuple(effect_bits)
+                effect_counts[effect_tuple] = effect_counts.get(effect_tuple, 0) + 1
+            
+            # 3. Calculate Entropy (H_eff)
+            h_eff = 0.0
+            for count in effect_counts.values():
+                p = count / total_states
+                if p > 0:
+                    import math
+                    h_eff -= p * math.log2(p)
+            
+            # Normalize EI to [0, 1] for the Monad's internal gauge
+            # Max entropy is K bits
+            normalized_ei = h_eff / K if K > 0 else 0.0
+            
+            # Restore Soul
+            self.graph.node_features.data = saved_state
+            
+            # Return (EI, Determinism=1.0, Degeneracy=K-H)
+            # Matching the signature of previous proxy
+            return normalized_ei, 1.0, K - h_eff
+
+    def _compute_ei_proxy(self) -> Tuple[float, float, float]:
+        """Wrapper for backward compatibility calling the True EI method."""
+        return self._compute_true_ei()
     
     def _get_self_state(self) -> SelfState:
         """Convert current MonadState to SelfState for introspection."""
@@ -399,6 +458,12 @@ class DivineMonad(nn.Module):
         
         # === 3. PROCESS ===
         output, node_states = self.graph(x_input)
+        
+        # === 3.1 RECURRENCE (The Stream of Consciousness) ===
+        # Update internal state for the next timestep
+        # This gives the Monad "Short-term Memory" / "Statefulness"
+        with torch.no_grad():
+            self.graph.node_features.data = node_states.data
         
         # === 4. FAST LOOP ===
         prediction_error = 0.0
