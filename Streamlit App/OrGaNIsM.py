@@ -3,33 +3,32 @@ import sys
 
 # --- CRITICAL: Add root to path BEFORE any other imports ---
 # Handle various directory structures (Local / NanoAGI / Streamlit Cloud)
-base_dir = os.path.dirname(os.path.abspath(__file__)) # .../Divine_Monad/
-parent_dir = os.path.dirname(base_dir)               # .../NanoAGI/
-grandparent_dir = os.path.dirname(parent_dir)        # .../ (Root)
+base_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(base_dir)
 
 # Potential locations for Divine_Monad and core modules
 search_paths = [
-    parent_dir,
     base_dir,
+    os.path.join(base_dir, "NanoAGI"),
+    parent_dir,
     os.path.join(parent_dir, "NanoAGI"),
-    grandparent_dir
 ]
 
 main_repo_path = None
 for path in search_paths:
     if os.path.isdir(path):
-        # Anchor to the directory that contains major components
+        # We look for the folder that CONTAINS Divine_Monad as a subfolder
+        # AND check that it's NOT already in sys.path
         if os.path.exists(os.path.join(path, "Divine_Monad")) or os.path.exists(os.path.join(path, "core.py")):
+            main_repo_path = path
             if path not in sys.path:
                 sys.path.insert(0, path)
-            main_repo_path = path
-            # Don't break yet, we might need both grandparent and parent for nested structures
-            # but usually insertion at 0 is enough if it's the right anchor.
+            break # CRITICAL: Stop after finding the FIRST valid root
 
 if main_repo_path:
-    print(f"[INFO] SyNAPSE Anchor: {main_repo_path}")
+    print(f"[INFO] Divine Monad Path Anchored: {main_repo_path}")
 else:
-    print("[WARN] Path anchoring failed. Imports may be unstable.")
+    print("[WARN] Could not anchor Divine Monad path. Imports may fail.")
 
 import streamlit as st
 import torch
