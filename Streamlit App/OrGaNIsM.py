@@ -302,6 +302,12 @@ if DIVINE_MONAD_AVAILABLE and "monad" not in st.session_state:
     st.session_state.monad = DivineMonad(config)
     st.session_state.voice = VoiceBox()
 
+# --- CYBERNETIC GOALS (Growth Drive) ---
+if "target_agency" not in st.session_state:
+    st.session_state.target_agency = 0.85
+if "auto_growth_enabled" not in st.session_state:
+    st.session_state.auto_growth_enabled = True
+
 # --- AUTHENTICATION SYSTEM: The Gateway ---
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
@@ -511,42 +517,37 @@ def fragment_divine_monad():
     with action_col:
         st.metric("🔄 Repairs", info.get('repair_count', 0))
     
-    # === PHASE TABS (9 Total: 4 Core + 4 Advanced + 1 Verification) ===
-    tab_soul, tab_body, tab_mind, tab_self, tab_causal_train, tab_hybrid_opt, tab_hdc_demo, tab_intro_adv, tab_consciousness = st.tabs([
-        "🔮 P1: Soul (Causal)",
-        "🧬 P2: Body (Topology)", 
-        "🧠 P3: Mind (Holographic)",
-        "🪞 P4: Self (Homeostasis)",
-        "⚗️ Train Emergence",
-        "🔧 Optimize Topology",
-        "🌀 HDC Operations",
-        "🔬 Introspection",
-        "🧿 CONSCIOUSNESS TEST"
+    # === THE GROWTH DRIVE: Proactive Autonomy ===
+    ei_score = info.get('ei_score', 0.5)
+    if st.session_state.auto_growth_enabled and ei_score < st.session_state.target_agency:
+        if not info.get('is_repairing', False):
+            monad._trigger_repair()
+            st.toast(f"🌱 Growth Drive Active: Agency {ei_score:.4f} < {st.session_state.target_agency:.2f}", icon="🧬")
+
+    # === PHASE TABS (10 Total: Core + Advanced + Tuning) ===
+    tabs = st.tabs([
+        "🔮 P1: Soul", "🧬 P2: Body", "🧠 P3: Mind", "🪞 P4: Self", 
+        "⚙️ CYBERNETIC TUNING", "⚗️ Emergence", "🔧 Topology", "🌀 HDC", "🔬 Intro", "🧿 TEST"
     ])
+    tab_soul, tab_body, tab_mind, tab_self, tab_tuning, tab_causal_train, tab_hybrid_opt, tab_hdc_demo, tab_intro_adv, tab_consciousness = tabs
     
     # === PHASE 1: THE SOUL (Causal Monitor) ===
     with tab_soul:
         st.subheader("Phase 1: Causal Emergence Monitor")
-        st.caption("*Measures how much the whole is greater than the sum of its parts.*")
+        st.write("Current structural coherence and causal power.")
         
         c1, c2, c3 = st.columns(3)
-        ei_score = info.get('ei_score', 0.5)
-        c1.metric("🎯 Agency (EI Score)", f"{ei_score:.4f}", 
-                  help="Proxy Effective Information: How much causal power does this system have?")
-        c2.metric("🔻 Pain Threshold", f"{monad.config.pain_threshold:.4f}",
-                  help="Calibrated 'Death Line'. EI below this triggers pain.")
-        c3.metric("⚡ Sensitivity", f"{monad.config.pain_sensitivity:.1f}x",
-                  help="How sharply does pain increase when below threshold?")
+        c1.metric("🎯 Agency", f"{ei_score:.4f}")
+        c2.text_input("📍 Pain Threshold", value=f"{monad.config.pain_threshold:.4f}", disabled=True)
+        c3.text_input("⚡ Sensitivity", value=f"{monad.config.pain_sensitivity:.1f}x", disabled=True)
         
         # EI Interpretation
         if ei_score >= monad.config.pain_threshold:
-            st.success(f"**Status**: Agency is ABOVE threshold. System is coherent and healthy.")
+            st.success("**Status**: System is coherent.")
         else:
-            deficit = monad.config.pain_threshold - ei_score
-            st.error(f"**Status**: Agency is BELOW threshold by {deficit:.4f}. System is in PAIN.")
+            st.error(f"**Status**: System is in PAIN (Deficit: {monad.config.pain_threshold - ei_score:.4f})")
         
-        # Target vs Reality
-        st.progress(min(1.0, ei_score), text=f"Agency: {ei_score:.2%}")
+        st.progress(min(1.0, ei_score), text=f"Causal Power: {ei_score:.2%}")
         
     # === PHASE 2: THE BODY (Topological Computing) ===
     with tab_body:
@@ -560,24 +561,18 @@ def fragment_divine_monad():
             density = num_edges / max_edges if max_edges > 0 else 0
             
             b1, b2, b3, b4 = st.columns(4)
-            b1.metric("🔵 Nodes", num_nodes, help="Current number of neurons")
-            b2.metric("🔗 Synapses", num_edges, help="Current number of connections")
-            b3.metric("📊 Density", f"{density:.2%}", help="Edge saturation (edges / max_edges)")
-            b4.metric("🎨 Node Dim", monad.graph.node_dim, help="Dimension of each node's state vector")
+            b1.metric("🔵 Nodes", num_nodes)
+            b2.metric("🔗 Synapses", num_edges)
+            b3.text_input("📊 Density", value=f"{density:.2%}", disabled=True)
+            b4.text_input("🎨 Dimension", value=f"{monad.graph.node_dim}", disabled=True)
             
             # Topology Actions
-            st.markdown("**🔧 Topology Mutations**")
-            mc1, mc2 = st.columns(2)
-            if mc1.button("➕ Grow Node", help="Add a new neuron via Net2Net"):
-                # Use mutator to grow
-                parent_id = monad.graph.num_input_nodes  # First hidden node
-                result = monad.mutator.grow_node(monad.graph, parent_id)
-                if result.success:
-                    st.toast(f"✅ {result.message}", icon="🌱")
-                    monad._update_topology_metrics()
-                    monad._run_slow_loop()  # Recalculate EI
-                else:
-                    st.toast(f"❌ {result.message}", icon="⚠️")
+            st.markdown("**🔧 Structural Directives**")
+            col_in1, col_in2 = st.columns(2)
+            growth_parent = col_in1.number_input("Parent Node ID", 0, num_nodes-1, monad.graph.num_input_nodes, key="parent_id_input")
+            if col_in2.button("🌱 Execute Mitosis", use_container_width=True):
+                result = monad.mutator.grow_node(monad.graph, growth_parent)
+                st.toast(result.message)
                 st.rerun()
                 
             if mc2.button("🔗 Add Random Edge", help="Create a new synapse"):
@@ -604,53 +599,71 @@ def fragment_divine_monad():
             mem = monad.memory
             num_stored = mem.get_num_stored()
             holo_dim = mem.holo_dim
-            neural_dim = mem.neural_dim
             max_items = mem.value_memory.shape[0]
             
-            m1, m2, m3 = st.columns(3)
-            m1.metric("📦 Stored Engrams", num_stored, help="Key-Value pairs in holographic memory")
-            m2.metric("🌀 Holographic Dim", f"{holo_dim:,}", help="Dimension of hypervectors (higher = more capacity)")
-            m3.metric("🧠 Neural Dim", neural_dim, help="Dimension of neural embeddings")
+            m1, m2 = st.columns(2)
+            m1.metric("📦 Engrams", num_stored)
+            m2.text_input("🌀 Vector Dimension", value=f"{holo_dim:,}", disabled=True)
             
-            # Capacity indicator
             usage = num_stored / max_items if max_items > 0 else 0
-            st.progress(usage, text=f"Memory Usage: {num_stored}/{max_items} ({usage:.0%})")
+            st.progress(usage, text=f"Holographic Saturation: {usage:.1%}")
             
             # Memory Actions
-            st.markdown("**💾 Memory Operations**")
-            mm1, mm2 = st.columns(2)
-            if mm1.button("💥 Damage Memory (30%)", help="Simulate corruption"):
-                mem.damage(0.3)
-                st.toast("⚠️ Memory damaged! 30% of holographic space zeroed.", icon="💥")
+            st.markdown("**💾 Synthetic Memory Control**")
+            col_m1, col_m2 = st.columns(2)
+            dmg_pct = col_m1.slider("Corruption Intensity", 0.0, 1.0, 0.3, 0.05, key="dmg_slider")
+            if col_m2.button("💥 Induce Synaptic Loss", use_container_width=True):
+                mem.damage(dmg_pct)
+                st.toast(f"Memory loss: {dmg_pct:.0%}")
                 st.rerun()
-            if mm2.button("🗑️ Clear Memory", help="Reset all stored engrams"):
+
+            if st.button("🗑️ Sanitize All Engrams", use_container_width=True):
                 mem.clear()
-                st.toast("Memory cleared.", icon="🗑️")
                 st.rerun()
                 
         except Exception as e:
-            st.warning(f"Memory stats unavailable: {e}")
+            st.warning(f"Memory subsystem reporting instability: {e}")
     
-    # === PHASE 4: THE SELF (Introspection & Homeostasis) ===
+    # === NEW: CYBERNETIC TUNING TAB ===
+    with tab_tuning:
+        st.subheader("⚙️ Cybernetic Goal Tuning")
+        st.write("Adjust the Monad's internal drive and survival parameters.")
+        
+        col_t1, col_t2 = st.columns(2)
+        with col_t1:
+            st.session_state.target_agency = st.slider("Target Agency (Goal EI)", 0.0, 1.0, st.session_state.target_agency, 0.05, 
+                                                     help="The Monad will proactively grow to reach this level of causal power.")
+            st.session_state.auto_growth_enabled = st.toggle("Enable Growth Drive", st.session_state.auto_growth_enabled)
+        
+        with col_t2:
+            new_threshold = st.slider("Survival Threshold (Pain)", 0.1, 0.9, monad.config.pain_threshold, 0.01)
+            if new_threshold != monad.config.pain_threshold:
+                monad.config.pain_threshold = new_threshold
+            
+            new_sens = st.number_input("Pain Sensitivity", 1.0, 100.0, float(monad.config.pain_sensitivity), 5.0)
+            if new_sens != monad.config.pain_sensitivity:
+                monad.config.pain_sensitivity = new_sens
+
+        st.info(f"**Current Drive**: {'🟢 Growth' if st.session_state.auto_growth_enabled and ei_score < st.session_state.target_agency else '⚪ Maintenance'}")
+
+    # === PHASE 4: THE SELF (Continued) ===
     with tab_self:
         st.subheader("Phase 4: Self-Awareness & Homeostasis")
         st.caption("*The system that monitors and repairs itself.*")
         
         p1, p2, p3 = st.columns(3)
-        p1.metric("😖 Pain Level", f"{info.get('pain_level', 0.0):.2f}", 
-                  help="0 = Calm, 1 = Maximum Agony")
-        p2.metric("🔧 Total Repairs", info.get('repair_count', 0),
-                  help="Autonomous self-repair actions taken")
-        p3.metric("⚙️ Is Repairing?", "Yes 🔧" if info.get('is_repairing', False) else "No ✅")
+        p1.metric("😖 Pain Index", f"{info.get('pain_level', 0.0):.2f}")
+        p2.text_input("🔧 Cumulative Repairs", value=str(info.get('repair_count', 0)), disabled=True)
+        p3.toggle("Repairing Status", value=info.get('is_repairing', False), disabled=True)
         
         # Action Log
-        st.markdown("**📜 Action Log (Autobiographical Memory)**")
+        st.markdown("**📜 Autobiographical Stream**")
         if hasattr(monad, 'action_log') and monad.action_log:
-            log_items = monad.action_log[-10:]  # Last 10 actions
-            log_text = " → ".join(log_items)
-            st.code(log_text, language=None)
+            log_items = monad.action_log[-8:]
+            for i, log in enumerate(reversed(log_items)):
+                st.caption(f"{len(log_items)-i}. {log}")
         else:
-            st.caption("No actions recorded yet.")
+            st.caption("Stream is silent.")
         
         # Advanced Intervention UI
         st.markdown("**⚔️ Advanced Biological Intervention**")
@@ -837,15 +850,17 @@ def fragment_divine_monad():
         """)
         
         # Configuration
-        h_col1, h_col2, h_col3, h_col4 = st.columns(4)
-        with h_col1:
-            h_inner_steps = st.number_input("Inner Steps", 10, 500, 50, key="h_inner")
-        with h_col2:
-            h_outer_steps = st.number_input("Outer Steps", 1, 50, 5, key="h_outer")
-        with h_col3:
-            h_inner_lr = st.number_input("Inner LR", 0.001, 0.1, 0.01, format="%.3f", key="h_lr")
-        with h_col4:
-            h_mut_prob = st.slider("Mutation Prob", 0.0, 1.0, 0.3, key="h_mut")
+        st.markdown("**🔬 Optimizer Parameters**")
+        h_col1, h_col2 = st.columns(2)
+        h_inner_steps = h_col1.number_input("SGD Inner Steps", 10, 500, 50, key="h_inner")
+        h_outer_steps = h_col2.number_input("Evolutionary Iterations", 1, 50, 5, key="h_outer")
+        
+        h_col3, h_col4 = st.columns(2)
+        h_inner_lr = h_col3.text_input("Heuristic Learning Rate", value="0.01", key="h_lr_text")
+        # Convert text input to float safely
+        try: h_inner_lr = float(h_inner_lr)
+        except: h_inner_lr = 0.01
+        h_mut_prob = h_col4.slider("Structural Mutation Probability", 0.0, 1.0, 0.3, key="h_mut")
         
         # Session state for hybrid results
         if "h_results" not in st.session_state:
@@ -909,10 +924,8 @@ def fragment_divine_monad():
             st.session_state.hdc_vectors = {}
         
         hdc_col1, hdc_col2 = st.columns(2)
-        with hdc_col1:
-            hdc_dim = st.slider("Hypervector Dimension", 1000, 10000, 5000, step=1000, key="hdc_dim")
-        with hdc_col2:
-            hdc_type = st.radio("Vector Type", ["Real-valued", "Bipolar (+1/-1)"], key="hdc_type")
+        hdc_dim = hdc_col1.number_input("Hypervector Dimension (D)", 1000, 20000, 10000, step=1000, key="hdc_dim_input")
+        hdc_type = hdc_col2.selectbox("Representation Mapping", ["Real-valued (float)", "Bipolar (+1/-1)"], key="hdc_type_select")
         
         if st.button("🎲 Generate Random A, B, C", key="gen_hv"):
             if hdc_type == "Real-valued":
@@ -979,94 +992,39 @@ def fragment_divine_monad():
                 clean_vec, clean_idx, clean_sim = cb.cleanup(A)
                 st.metric(f"Cleanup(A) → item_{clean_idx}", f"sim={clean_sim:.4f}")
     
-    # === TAB 8: ADVANCED INTROSPECTION (Phase 4 Advanced) ===
+    # === TAB 9: INTROSPECTION (High-Fidelity) ===
     with tab_intro_adv:
-        st.subheader("🔬 Phase 4: Advanced Introspection Controls")
-        st.caption("*Fine-tune self-awareness thresholds and visualize Fourier encoding.*")
+        st.subheader("🔬 Neural Introspection Console")
+        st.write("Visualizing the internal 'Self-State' vector and Fourier features.")
         
-        st.markdown("""
-        > **The \"Pineal Gland\"**: Transforms raw scalar metrics into high-frequency features
-        > that the network can \"feel\" precisely. Overcomes neural network spectral bias.
-        """)
-        
-        # Custom VoiceThresholds
-        st.markdown("### 🎚️ Voice Thresholds Configuration")
-        st.caption("Customize how the VoiceBox interprets the Monad's state.")
-        
-        vt_col1, vt_col2, vt_col3 = st.columns(3)
-        with vt_col1:
-            vt_critical = st.slider("EI Critical Level", 0.0, 0.5, 0.2, key="vt_crit",
-                                   help="Below this = existential crisis")
-        with vt_col2:
-            vt_low = st.slider("EI Low Level", 0.2, 0.6, 0.4, key="vt_low",
-                              help="Below this = distress")
-        with vt_col3:
-            vt_healthy = st.slider("EI Healthy Level", 0.4, 1.0, 0.6, key="vt_healthy",
-                                  help="Above this = stable")
-        
-        if st.button("Apply Custom Thresholds", key="apply_vt"):
-            new_thresholds = VoiceThresholds(
-                ei_critical=vt_critical,
-                ei_low=vt_low,
-                ei_healthy=vt_healthy
-            )
-            st.session_state.voice = VoiceBox(thresholds=new_thresholds)
-            st.toast("Voice thresholds updated!", icon="🎚️")
-        
-        st.markdown("---")
-        
-        # Manual SelfState Override
-        st.markdown("### 🧠 Manual Self-State Override")
-        st.caption("Manually set internal state values to test the introspection encoder.")
-        
-        ss_col1, ss_col2 = st.columns(2)
-        with ss_col1:
-            ss_ei = st.slider("EI Score", 0.0, 1.0, 0.5, key="ss_ei")
-            ss_nodes = st.slider("Node Count (normalized)", 0.0, 1.0, 0.5, key="ss_nodes")
-            ss_density = st.slider("Edge Density", 0.0, 1.0, 0.3, key="ss_density")
-        with ss_col2:
-            ss_noise = st.slider("Memory Noise", 0.0, 1.0, 0.0, key="ss_noise")
-            ss_surprise = st.slider("Surprise Level", 0.0, 1.0, 0.0, key="ss_surp")
-        
-        if st.button("🔬 Encode State via Fourier Features", key="encode_state"):
-            state = SelfState(
-                ei_score=ss_ei,
-                node_count=ss_nodes,
-                edge_density=ss_density,
-                memory_noise=ss_noise,
-                surprise=ss_surprise
-            )
-            encoded = monad.introspector(state)
-            
-            st.markdown("**Fourier-Encoded Self-State Vector:**")
-            st.bar_chart(encoded.detach().numpy(), width='stretch')
-            st.caption(f"Output dimension: {encoded.shape[0]}, Norm: {encoded.norm().item():.4f}")
-        
-        # MonadState Viewer
-        st.markdown("---")
-        st.markdown("### 📋 Current MonadState (Full Details)")
         try:
             state = monad.state
-            state_dict = {
-                "ei_score": round(state.ei_score, 4),
-                "ei_micro": round(state.ei_micro, 4),
-                "ei_macro": round(state.ei_macro, 4),
-                "num_nodes": state.num_nodes,
-                "num_edges": state.num_edges,
-                "edge_density": round(state.edge_density, 4),
-                "memory_items": state.memory_items,
-                "memory_noise": round(state.memory_noise, 4),
-                "surprise": round(state.surprise, 4),
-                "prediction_error": round(state.prediction_error, 4),
-                "pain_level": round(state.pain_level, 4),
-                "is_repairing": state.is_repairing,
-                "repair_count": state.repair_count,
-                "step_count": state.step_count,
-                "last_slow_loop": state.last_slow_loop
-            }
-            st.json(state_dict)
+            iv_col1, iv_col2 = st.columns(2)
+            iv_col1.text_input("🎯 Agency (EI)", value=f"{state.ei_score:.6f}", disabled=True)
+            iv_col2.text_input("🌊 Surprise Index", value=f"{state.surprise:.4f}", disabled=True)
+            
+            # Fourier Encoding Visualization
+            st.markdown("**🧬 Fourier Feature Map (The 'Pineal Gland')**")
+            # We can show a mock or real encoding depending on availability
+            encoded = monad.introspector(SelfState(
+                ei_score=state.ei_score,
+                node_count=state.num_nodes / 50.0,
+                edge_density=state.edge_density,
+                memory_noise=state.memory_noise,
+                surprise=state.surprise
+            ))
+            st.bar_chart(encoded.detach().numpy(), width="stretch")
+            
+            with st.expander("� Full State Registry", expanded=False):
+                st.json({
+                    "nodes": state.num_nodes,
+                    "edges": state.num_edges,
+                    "repairs": state.repair_count,
+                    "step": state.step_count,
+                    "is_repairing": state.is_repairing
+                })
         except Exception as e:
-            st.warning(f"Could not read MonadState: {e}")
+            st.warning(f"Introspection buffer inaccessible: {e}")
     
     # === TAB 9: CONSCIOUSNESS VERIFICATION TEST ===
     with tab_consciousness:
