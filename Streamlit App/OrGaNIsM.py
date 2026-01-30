@@ -574,9 +574,10 @@ def fragment_divine_monad():
         
         try:
             mem = monad.memory
-            num_stored = mem.kv.get_num_stored()
-            holo_dim = mem.kv.holo_dim
-            neural_dim = mem.kv.neural_dim
+            num_stored = mem.get_num_stored()
+            holo_dim = mem.holo_dim
+            neural_dim = mem.neural_dim
+            max_items = mem.value_memory.shape[0]
             
             m1, m2, m3 = st.columns(3)
             m1.metric("📦 Stored Engrams", num_stored, help="Key-Value pairs in holographic memory")
@@ -584,7 +585,6 @@ def fragment_divine_monad():
             m3.metric("🧠 Neural Dim", neural_dim, help="Dimension of neural embeddings")
             
             # Capacity indicator
-            max_items = mem.kv.max_items
             usage = num_stored / max_items if max_items > 0 else 0
             st.progress(usage, text=f"Memory Usage: {num_stored}/{max_items} ({usage:.0%})")
             
@@ -592,11 +592,11 @@ def fragment_divine_monad():
             st.markdown("**💾 Memory Operations**")
             mm1, mm2 = st.columns(2)
             if mm1.button("💥 Damage Memory (30%)", help="Simulate corruption"):
-                mem.kv.damage(0.3)
+                mem.damage(0.3)
                 st.toast("⚠️ Memory damaged! 30% of holographic space zeroed.", icon="💥")
                 st.rerun()
             if mm2.button("🗑️ Clear Memory", help="Reset all stored engrams"):
-                mem.kv.clear()
+                mem.clear()
                 st.toast("Memory cleared.", icon="🗑️")
                 st.rerun()
                 
