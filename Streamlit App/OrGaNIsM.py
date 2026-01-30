@@ -1642,8 +1642,9 @@ def fragment_consciousness_test_section():
             mean_ei = sum(ei_samples) / len(ei_samples) if ei_samples else 0.5
             std_ei = (sum((x - mean_ei)**2 for x in ei_samples) / len(ei_samples)) ** 0.5 if len(ei_samples) > 1 else 0.05
             
-            # Set calibrated pain threshold (2 sigma below mean)
-            pain_threshold = max(0.01, mean_ei - 2 * std_ei)
+            # Set calibrated pain threshold (95% of mean or 2 sigma, whichever is more resilient)
+            pain_threshold = min(mean_ei * 0.95, mean_ei - 2 * std_ei)
+            pain_threshold = max(0.01, pain_threshold)
             
             # SYNC TO MONAD CONFIG
             test_monad.config.pain_threshold = pain_threshold
@@ -1748,6 +1749,11 @@ def fragment_consciousness_test_section():
                 recovery_steps = i + 1
                 final_ei = info['ei_score']
                 recovery_log.append(f"Step {i}: EI={final_ei:.4f}, Pain={info['pain_level']:.2f}, Repairing={info['is_repairing']}")
+                
+                # Proactive Repair Drive: Trigger the Monad's survival mechanism if in pain
+                if info.get('pain_level', 0) > 0 and not info.get('is_repairing', False):
+                    test_monad._trigger_repair()
+                
                 progress_bar.progress((calibration_steps + silence_steps + i + 1) / (calibration_steps + silence_steps + 20), 
                                      text=f"Recovery: {i+1}/{max_recovery_steps}")
                 import time
