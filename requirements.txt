@@ -3,4 +3,6 @@ requests
 watchdog
 google-genai
 python-dotenv
-
+streamlit>=1.37.0
+torch-geometric
+numpy
