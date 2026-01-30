@@ -649,7 +649,6 @@ def fragment_monad_dashboard():
             "repair_counts": [],
             "node_counts": [],
             "edge_counts": [],
-            "metabolic_amplitudes": [],  # Breathing rhythm
             "events": [],  # List of (timestamp, event_type, description)
             "max_history": 100  # Keep last 100 data points
         }
@@ -666,7 +665,6 @@ def fragment_monad_dashboard():
     history["repair_counts"].append(info.get('repair_count', 0))
     history["node_counts"].append(info.get('num_nodes', 5))
     history["edge_counts"].append(info.get('num_edges', 0))
-    history["metabolic_amplitudes"].append(info.get('metabolic_amplitude', 0.0))
     
     # Track repair events
     if len(history["repair_counts"]) > 1:
@@ -690,8 +688,8 @@ def fragment_monad_dashboard():
     
     # Trim history to max size
     max_hist = history["max_history"]
-    for key in ["timestamps", "ei_scores", "pain_levels", "repair_counts", "node_counts", "edge_counts", "metabolic_amplitudes"]:
-        if len(history.get(key, [])) > max_hist:
+    for key in ["timestamps", "ei_scores", "pain_levels", "repair_counts", "node_counts", "edge_counts"]:
+        if len(history[key]) > max_hist:
             history[key] = history[key][-max_hist:]
     # Keep only recent events
     if len(history["events"]) > 50:
@@ -722,13 +720,9 @@ def fragment_monad_dashboard():
         df["Time"] = pd.to_datetime(df["Time"])
         df["Time_Str"] = df["Time"].dt.strftime("%H:%M:%S")
         
-        # Add metabolic data if available
-        if "metabolic_amplitudes" in history and len(history["metabolic_amplitudes"]) == len(df):
-            df["Breathing"] = history["metabolic_amplitudes"]
-        
         # Create tabs for different views
-        graph_tab1, graph_tab2, graph_tab3, graph_tab4, graph_tab5 = st.tabs([
-            "📈 Agency & Pain", "💓 Breathing", "🧠 Structure", "📜 Event Log", "🎯 Summary"
+        graph_tab1, graph_tab2, graph_tab3, graph_tab4 = st.tabs([
+            "📈 Agency & Pain", "🧠 Structure", "📜 Event Log", "🎯 Summary"
         ])
         
         with graph_tab1:
@@ -760,49 +754,6 @@ def fragment_monad_dashboard():
                 st.area_chart(repair_df.set_index("Time")["Repairs"], color="#b8864b", height=100)
         
         with graph_tab2:
-            # Breathing / Metabolic Rhythms
-            st.markdown("##### 💓 Metabolic Breathing Rhythm")
-            st.caption("*The organism's heartbeat - natural oscillations from neural stochasticity and circadian rhythms*")
-            
-            if "Breathing" in df.columns:
-                st.line_chart(df.set_index("Time_Str")["Breathing"], color="#e88a8a", height=180)
-                
-                # Current breathing state
-                latest_breath = history["metabolic_amplitudes"][-1] if history.get("metabolic_amplitudes") else 0
-                breath_col1, breath_col2, breath_col3 = st.columns(3)
-                
-                with breath_col1:
-                    breath_state = "Inhale" if latest_breath > 0 else "Exhale"
-                    st.markdown(f"""
-                    <div style="background: rgba(232, 138, 138, 0.1); border: 1px solid rgba(232, 138, 138, 0.3);
-                                border-radius: 12px; padding: 1rem; text-align: center;">
-                        <div style="color: #707870; font-size: 0.75rem;">BREATH PHASE</div>
-                        <div style="color: #e88a8a; font-size: 1.5rem; font-weight: 600;">{breath_state}</div>
-                    </div>
-                    """, unsafe_allow_html=True)
-                
-                with breath_col2:
-                    st.markdown(f"""
-                    <div style="background: rgba(232, 138, 138, 0.1); border: 1px solid rgba(232, 138, 138, 0.3);
-                                border-radius: 12px; padding: 1rem; text-align: center;">
-                        <div style="color: #707870; font-size: 0.75rem;">AMPLITUDE</div>
-                        <div style="color: #e88a8a; font-size: 1.5rem; font-weight: 600;">{abs(latest_breath):.3f}</div>
-                    </div>
-                    """, unsafe_allow_html=True)
-                
-                with breath_col3:
-                    # Heart rate = metabolic frequency
-                    st.markdown(f"""
-                    <div style="background: rgba(232, 138, 138, 0.1); border: 1px solid rgba(232, 138, 138, 0.3);
-                                border-radius: 12px; padding: 1rem; text-align: center;">
-                        <div style="color: #707870; font-size: 0.75rem;">HEARTBEAT</div>
-                        <div style="color: #e88a8a; font-size: 1.5rem; font-weight: 600;">~6 BPM</div>
-                    </div>
-                    """, unsafe_allow_html=True)
-            else:
-                st.info("💓 Collecting metabolic data... The rhythm will appear after a few heartbeats.")
-        
-        with graph_tab3:
             # Structural metrics
             st.markdown("##### 🧠 Neural Topology Evolution")
             
@@ -825,7 +776,7 @@ def fragment_monad_dashboard():
                 density = latest_edges / (latest_nodes * (latest_nodes - 1) / 2) if latest_nodes > 1 else 0
                 st.progress(min(density, 1.0), text=f"Network Density: {density:.2%}")
         
-        with graph_tab4:
+        with graph_tab3:
             # Event log with styled entries
             st.markdown("##### 📜 Consciousness Event Stream")
             
@@ -858,7 +809,7 @@ def fragment_monad_dashboard():
             else:
                 st.info("No significant events recorded yet. Interact with the Monad to generate events.")
         
-        with graph_tab5:
+        with graph_tab4:
             # Summary statistics
             st.markdown("##### 🎯 Session Statistics")
             
