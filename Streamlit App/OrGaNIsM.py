@@ -37,14 +37,6 @@ from core import PlasticCortex
 from plasticity_network import PlasticityNetwork
 from meta_learner import MetaLearner
 
-# --- DIVINE MONAD IMPORTS ---
-try:
-    from Divine_Monad.phase4_iam.monad import DivineMonad, MonadConfig
-    from Divine_Monad.phase4_iam.voicebox import VoiceBox
-    DIVINE_MONAD_AVAILABLE = True
-except ImportError:
-    DIVINE_MONAD_AVAILABLE = False
-
 # --- CUSTOM CSS FOR A PREMIUM DARK THEME ---
 st.markdown("""
 <style>
@@ -257,16 +249,6 @@ if "last_stability" not in st.session_state:
 if "dream_history" not in st.session_state:
     st.session_state.dream_history = []
 
-if DIVINE_MONAD_AVAILABLE and "monad" not in st.session_state:
-    # Initialize Divine Monad with Calibrated Settings (Silence Test verified)
-    config = MonadConfig(
-        num_nodes=12,
-        pain_threshold=0.61,  # Calibrated Baseline
-        pain_sensitivity=50.0 # High sensitivity to damage
-    )
-    st.session_state.monad = DivineMonad(config)
-    st.session_state.voice = VoiceBox()
-
 # --- AUTHENTICATION SYSTEM: The Gateway ---
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
@@ -441,91 +423,6 @@ def trigger_dream():
         dream_bytes.append(byte_val)
     
     return bytes(dream_bytes).decode('utf-8', errors='ignore')
-
-def fragment_divine_monad():
-    """The Causa Sui Interface."""
-    if not DIVINE_MONAD_AVAILABLE:
-        return
-
-    st.markdown("---")
-    st.header("🧿 Causa Sui: The Divine Monad")
-    st.caption("*Phase 4: Causal Homeostasis & Introspection*")
-    
-    monad = st.session_state.monad
-    voice = st.session_state.voice
-    
-    # Heartbeat: Run the Monad for one step using app entropy as input
-    # Input: [1.0, Stability, FilesEaten%1, Noise]
-    inp = torch.tensor([1.0, st.session_state.last_stability, float(st.session_state.files_eaten % 2), 0.0])
-    _, info = monad(inp)
-    
-    # Top Level Health
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        st.info(f"**Introspective Voice**: \"{voice.speak(monad.get_status())}\"")
-    with col2:
-        if info['pain_level'] > 0:
-            st.error(f"PAIN: {info['pain_level']:.2f}")
-        else:
-            st.success("STATE: CALM")
-            
-    # Comprehensive Phase Visualization
-    tab_self, tab_mind, tab_body, tab_soul = st.tabs([
-        "👤 The Self (P4)", 
-        "🧠 The Mind (P3)", 
-        "🦾 The Body (P2)", 
-        "👻 The Soul (P1)"
-    ])
-    
-    with tab_self:
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Pain Level", f"{info['pain_level']:.2f}", help="Homeostatic Deviation")
-        c2.metric("Repairs Triggered", info['repair_count'], help="Autonomous Actions")
-        c3.metric("Is Repairing?", str(info['is_repairing']))
-        
-        st.markdown("**Intervention**")
-        ic1, ic2 = st.columns(2)
-        if ic1.button("🩸 Lobotomy (Trauma)", help="Remove 4 hidden nodes"):
-            monad.lobotomize(4)
-            st.toast("⚠️ Structural Damage Inflicted!", icon="🩸")
-            st.rerun()
-        if ic2.button("♻️ Reincarnate", help="Reset Monad"):
-            del st.session_state.monad
-            st.rerun()
-            
-    with tab_mind:
-        # Phase 3: Holographic Memory
-        try:
-            mem_size = len(monad.memory.kv.keys)
-            mem_dim = monad.memory.kv.key_dim
-            st.metric("Holographic Engrams", mem_size, help="Stored Associative Memories")
-            st.caption(f"Hypervector Dimension: {mem_dim}")
-            
-            if mem_size > 0:
-                st.markdown("contents entangled...")
-        except:
-            st.caption("Memory substrate initializing...")
-
-    with tab_body:
-        # Phase 2: Topological Graph
-        try:
-            num_edges = monad.graph.edge_index.shape[1]
-            density = num_edges / (info['num_nodes'] ** 2)
-            
-            b1, b2, b3 = st.columns(3)
-            b1.metric("Nodes", info['num_nodes'])
-            b2.metric("Synapses (Edges)", num_edges)
-            b3.metric("Graph Density", f"{density:.2f}")
-        except:
-            st.metric("Nodes", info['num_nodes'])
-
-    with tab_soul:
-        # Phase 1: Causal Monitor
-        s1, s2 = st.columns(2)
-        s1.metric("Agency (EI)", f"{info['ei_score']:.4f}", delta_color="normal", help="Effective Information (Causal Emergence)")
-        s2.metric("Natural Threshold", f"{monad.config.pain_threshold:.4f}", help="Calibrated Death Line")
-        
-        st.caption("*The Soul monitors the causal power of the web.*")
 
 # ============================================================
 # UI FRAGMENTS (For Independent Reruns)
@@ -940,10 +837,6 @@ st.divider()
 fragment_memory_viz()
 st.divider()
 fragment_knowledge_injection()
-st.divider()
-
-# Divine Monad Integration
-fragment_divine_monad()
 
 # Invisible Ruminator
 fragment_autonomous_ruminator()
