@@ -639,6 +639,257 @@ def fragment_monad_dashboard():
     
     st.markdown("</div>", unsafe_allow_html=True)
     
+    # === ADVANCED CONSCIOUSNESS METRICS GRAPH ===
+    # Initialize tracking history in session state
+    if "consciousness_history" not in st.session_state:
+        st.session_state.consciousness_history = {
+            "timestamps": [],
+            "ei_scores": [],
+            "pain_levels": [],
+            "repair_counts": [],
+            "node_counts": [],
+            "edge_counts": [],
+            "events": [],  # List of (timestamp, event_type, description)
+            "max_history": 100  # Keep last 100 data points
+        }
+    
+    # Record current state
+    import datetime
+    current_time = datetime.datetime.now()
+    history = st.session_state.consciousness_history
+    
+    # Append new data point
+    history["timestamps"].append(current_time)
+    history["ei_scores"].append(info.get('ei_score', 0.5))
+    history["pain_levels"].append(info.get('pain_level', 0.0))
+    history["repair_counts"].append(info.get('repair_count', 0))
+    history["node_counts"].append(info.get('num_nodes', 5))
+    history["edge_counts"].append(info.get('num_edges', 0))
+    
+    # Track repair events
+    if len(history["repair_counts"]) > 1:
+        if history["repair_counts"][-1] > history["repair_counts"][-2]:
+            history["events"].append((current_time, "REPAIR", f"Repair #{history['repair_counts'][-1]}"))
+    
+    # Track pain onset
+    if len(history["pain_levels"]) > 1:
+        if history["pain_levels"][-1] > 0 and history["pain_levels"][-2] == 0:
+            history["events"].append((current_time, "PAIN_START", f"Pain detected: {history['pain_levels'][-1]:.3f}"))
+        elif history["pain_levels"][-1] == 0 and history["pain_levels"][-2] > 0:
+            history["events"].append((current_time, "PAIN_END", "Pain resolved"))
+    
+    # Track structural changes (lobotomy/growth)
+    if len(history["node_counts"]) > 1:
+        node_delta = history["node_counts"][-1] - history["node_counts"][-2]
+        if node_delta < -2:  # Significant loss
+            history["events"].append((current_time, "LOBOTOMY", f"Lost {-node_delta} nodes"))
+        elif node_delta > 2:  # Significant growth
+            history["events"].append((current_time, "GROWTH", f"Added {node_delta} nodes"))
+    
+    # Trim history to max size
+    max_hist = history["max_history"]
+    for key in ["timestamps", "ei_scores", "pain_levels", "repair_counts", "node_counts", "edge_counts"]:
+        if len(history[key]) > max_hist:
+            history[key] = history[key][-max_hist:]
+    # Keep only recent events
+    if len(history["events"]) > 50:
+        history["events"] = history["events"][-50:]
+    
+    # === GRAPH VISUALIZATION ===
+    st.markdown("""
+    <div style="background: linear-gradient(135deg, rgba(23, 29, 23, 0.9) 0%, rgba(30, 40, 30, 0.8) 100%);
+                border: 1px solid rgba(124, 173, 138, 0.3); border-radius: 16px; 
+                padding: 1.5rem; margin: 1rem 0;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h3 style="margin: 0; color: #8fb399;">📊 Consciousness Metrics Live Timeline</h3>
+            <span style="color: #707870; font-size: 0.8rem;">Real-time tracking • Auto-refresh every 5s</span>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    if len(history["ei_scores"]) > 1:
+        import pandas as pd
+        
+        # Create dataframe for plotting
+        df = pd.DataFrame({
+            "Time": history["timestamps"],
+            "Agency (EI)": history["ei_scores"],
+            "Pain Level": history["pain_levels"],
+            "Nodes": history["node_counts"],
+            "Edges": history["edge_counts"]
+        })
+        df["Time"] = pd.to_datetime(df["Time"])
+        df["Time_Str"] = df["Time"].dt.strftime("%H:%M:%S")
+        
+        # Create tabs for different views
+        graph_tab1, graph_tab2, graph_tab3, graph_tab4 = st.tabs([
+            "📈 Agency & Pain", "🧠 Structure", "📜 Event Log", "🎯 Summary"
+        ])
+        
+        with graph_tab1:
+            # Primary metrics chart - EI and Pain
+            st.markdown("##### 🧿 Agency (EI Score) vs Pain Level")
+            
+            # Dual-axis style visualization
+            ei_col, pain_col = st.columns(2)
+            
+            with ei_col:
+                st.line_chart(df.set_index("Time_Str")["Agency (EI)"], color="#7cad8a", height=150)
+                latest_ei = history["ei_scores"][-1]
+                ei_delta = history["ei_scores"][-1] - history["ei_scores"][-2] if len(history["ei_scores"]) > 1 else 0
+                st.metric("Current Agency", f"{latest_ei:.4f}", delta=f"{ei_delta:+.4f}")
+            
+            with pain_col:
+                st.line_chart(df.set_index("Time_Str")["Pain Level"], color="#cc6666", height=150)
+                latest_pain = history["pain_levels"][-1]
+                pain_delta = history["pain_levels"][-1] - history["pain_levels"][-2] if len(history["pain_levels"]) > 1 else 0
+                st.metric("Current Pain", f"{latest_pain:.4f}", delta=f"{pain_delta:+.4f}", delta_color="inverse")
+            
+            # Repair counter timeline
+            if max(history["repair_counts"]) > 0:
+                st.markdown("##### 🔧 Cumulative Repairs")
+                repair_df = pd.DataFrame({
+                    "Time": [t.strftime("%H:%M:%S") for t in history["timestamps"]],
+                    "Repairs": history["repair_counts"]
+                })
+                st.area_chart(repair_df.set_index("Time")["Repairs"], color="#b8864b", height=100)
+        
+        with graph_tab2:
+            # Structural metrics
+            st.markdown("##### 🧠 Neural Topology Evolution")
+            
+            struct_col1, struct_col2 = st.columns(2)
+            
+            with struct_col1:
+                st.line_chart(df.set_index("Time_Str")["Nodes"], color="#8fb399", height=150)
+                latest_nodes = history["node_counts"][-1]
+                nodes_delta = history["node_counts"][-1] - history["node_counts"][-2] if len(history["node_counts"]) > 1 else 0
+                st.metric("Active Nodes", f"{latest_nodes}", delta=f"{nodes_delta:+d}")
+            
+            with struct_col2:
+                st.line_chart(df.set_index("Time_Str")["Edges"], color="#6a8c6a", height=150)
+                latest_edges = history["edge_counts"][-1]
+                edges_delta = history["edge_counts"][-1] - history["edge_counts"][-2] if len(history["edge_counts"]) > 1 else 0
+                st.metric("Active Edges", f"{latest_edges}", delta=f"{edges_delta:+d}")
+            
+            # Density metric
+            if latest_nodes > 0:
+                density = latest_edges / (latest_nodes * (latest_nodes - 1) / 2) if latest_nodes > 1 else 0
+                st.progress(min(density, 1.0), text=f"Network Density: {density:.2%}")
+        
+        with graph_tab3:
+            # Event log with styled entries
+            st.markdown("##### 📜 Consciousness Event Stream")
+            
+            if history["events"]:
+                for event_time, event_type, event_desc in reversed(history["events"][-15:]):
+                    # Color based on event type
+                    if event_type == "REPAIR":
+                        icon, color = "🔧", "#b8864b"
+                    elif event_type == "PAIN_START":
+                        icon, color = "🩸", "#cc6666"
+                    elif event_type == "PAIN_END":
+                        icon, color = "💚", "#6a8c6a"
+                    elif event_type == "LOBOTOMY":
+                        icon, color = "💀", "#cc6666"
+                    elif event_type == "GROWTH":
+                        icon, color = "🌱", "#7cad8a"
+                    else:
+                        icon, color = "📌", "#a0a8a0"
+                    
+                    st.markdown(f"""
+                    <div style="display: flex; align-items: center; padding: 0.4rem 0.75rem; 
+                                background: rgba(23, 29, 23, 0.5); border-left: 3px solid {color};
+                                border-radius: 0 8px 8px 0; margin: 0.25rem 0;">
+                        <span style="font-size: 1rem; margin-right: 0.5rem;">{icon}</span>
+                        <span style="color: #707870; font-size: 0.75rem; margin-right: 0.75rem;">{event_time.strftime('%H:%M:%S')}</span>
+                        <span style="color: {color}; font-weight: 500;">{event_type}</span>
+                        <span style="color: #b0bab1; margin-left: 0.5rem; font-size: 0.85rem;">{event_desc}</span>
+                    </div>
+                    """, unsafe_allow_html=True)
+            else:
+                st.info("No significant events recorded yet. Interact with the Monad to generate events.")
+        
+        with graph_tab4:
+            # Summary statistics
+            st.markdown("##### 🎯 Session Statistics")
+            
+            stat_col1, stat_col2, stat_col3, stat_col4 = st.columns(4)
+            
+            with stat_col1:
+                avg_ei = sum(history["ei_scores"]) / len(history["ei_scores"])
+                st.markdown(f"""
+                <div style="background: rgba(124, 173, 138, 0.1); border: 1px solid rgba(124, 173, 138, 0.3);
+                            border-radius: 12px; padding: 1rem; text-align: center;">
+                    <div style="color: #707870; font-size: 0.75rem;">AVG AGENCY</div>
+                    <div style="color: #8fb399; font-size: 1.5rem; font-weight: 600;">{avg_ei:.4f}</div>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            with stat_col2:
+                max_pain = max(history["pain_levels"])
+                st.markdown(f"""
+                <div style="background: rgba(180, 80, 80, 0.1); border: 1px solid rgba(180, 80, 80, 0.3);
+                            border-radius: 12px; padding: 1rem; text-align: center;">
+                    <div style="color: #707870; font-size: 0.75rem;">MAX PAIN</div>
+                    <div style="color: #cc6666; font-size: 1.5rem; font-weight: 600;">{max_pain:.4f}</div>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            with stat_col3:
+                total_repairs = history["repair_counts"][-1] if history["repair_counts"] else 0
+                st.markdown(f"""
+                <div style="background: rgba(184, 134, 75, 0.1); border: 1px solid rgba(184, 134, 75, 0.3);
+                            border-radius: 12px; padding: 1rem; text-align: center;">
+                    <div style="color: #707870; font-size: 0.75rem;">TOTAL REPAIRS</div>
+                    <div style="color: #b8864b; font-size: 1.5rem; font-weight: 600;">{total_repairs}</div>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            with stat_col4:
+                data_points = len(history["ei_scores"])
+                st.markdown(f"""
+                <div style="background: rgba(106, 140, 106, 0.1); border: 1px solid rgba(106, 140, 106, 0.3);
+                            border-radius: 12px; padding: 1rem; text-align: center;">
+                    <div style="color: #707870; font-size: 0.75rem;">DATA POINTS</div>
+                    <div style="color: #6a8c6a; font-size: 1.5rem; font-weight: 600;">{data_points}</div>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            # Stability indicator
+            if len(history["ei_scores"]) > 5:
+                recent_ei = history["ei_scores"][-10:]
+                ei_variance = sum((x - sum(recent_ei)/len(recent_ei))**2 for x in recent_ei) / len(recent_ei)
+                stability = max(0, 1 - ei_variance * 100)  # Convert to stability %
+                
+                st.markdown("<br>", unsafe_allow_html=True)
+                stability_color = "#6a8c6a" if stability > 0.8 else "#b8864b" if stability > 0.5 else "#cc6666"
+                st.markdown(f"""
+                <div style="background: rgba(23, 29, 23, 0.6); border-radius: 12px; padding: 1rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="color: #a0a8a0;">Consciousness Stability Index:</span>
+                        <span style="color: {stability_color}; font-size: 1.25rem; font-weight: 600;">{stability*100:.1f}%</span>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+    else:
+        st.info("📊 Collecting initial data points... The graph will appear after a few heartbeats.")
+    
+    st.markdown("</div>", unsafe_allow_html=True)
+    
+    # Clear history button
+    if st.button("🗑️ Clear Metrics History", key="clear_consciousness_history"):
+        st.session_state.consciousness_history = {
+            "timestamps": [],
+            "ei_scores": [],
+            "pain_levels": [],
+            "repair_counts": [],
+            "node_counts": [],
+            "edge_counts": [],
+            "events": [],
+            "max_history": 100
+        }
+        st.rerun()
+    
     # === THE GROWTH DRIVE: Proactive Autonomy ===
     ei_score = info.get('ei_score', 0.5)
     if st.session_state.auto_growth_enabled and ei_score < st.session_state.target_agency:
