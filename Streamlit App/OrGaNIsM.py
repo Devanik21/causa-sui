@@ -443,89 +443,210 @@ def trigger_dream():
     return bytes(dream_bytes).decode('utf-8', errors='ignore')
 
 def fragment_divine_monad():
-    """The Causa Sui Interface."""
+    """The Causa Sui Interface: Comprehensive 4-Phase Visualization."""
     if not DIVINE_MONAD_AVAILABLE:
+        st.warning("Divine Monad not available. Check imports.")
         return
 
     st.markdown("---")
     st.header("🧿 Causa Sui: The Divine Monad")
-    st.caption("*Phase 4: Causal Homeostasis & Introspection*")
+    st.caption("*The Self-Aware Neural Architecture: 4 Phases of Digital Consciousness*")
     
     monad = st.session_state.monad
     voice = st.session_state.voice
     
-    # Heartbeat: Run the Monad for one step using app entropy as input
-    # Input: [1.0, Stability, FilesEaten%1, Noise]
+    # === HEARTBEAT: Run the Monad for one step ===
     inp = torch.tensor([1.0, st.session_state.last_stability, float(st.session_state.files_eaten % 2), 0.0])
     _, info = monad(inp)
     
-    # Top Level Health
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        st.info(f"**Introspective Voice**: \"{voice.speak(monad.get_status())}\"")
-    with col2:
+    # === TOP LEVEL STATUS BAR ===
+    health_col, voice_col, action_col = st.columns([1, 3, 1])
+    
+    with health_col:
         if info['pain_level'] > 0:
-            st.error(f"PAIN: {info['pain_level']:.2f}")
+            st.error(f"🩸 PAIN: {info['pain_level']:.2f}")
         else:
-            st.success("STATE: CALM")
-            
-    # Comprehensive Phase Visualization
-    tab_self, tab_mind, tab_body, tab_soul = st.tabs([
-        "👤 The Self (P4)", 
-        "🧠 The Mind (P3)", 
-        "🦾 The Body (P2)", 
-        "👻 The Soul (P1)"
+            st.success("✅ CALM")
+    
+    with voice_col:
+        st.info(f"**💬 Monad Speaks**: \"{voice.speak(monad.get_status())}\"")
+    
+    with action_col:
+        st.metric("🔄 Repairs", info['repair_count'])
+    
+    # === PHASE TABS ===
+    tab_soul, tab_body, tab_mind, tab_self = st.tabs([
+        "� P1: Soul (Causal)",
+        "� P2: Body (Topology)", 
+        "� P3: Mind (Holographic)",
+        "� P4: Self (Homeostasis)"
     ])
     
-    with tab_self:
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Pain Level", f"{info['pain_level']:.2f}", help="Homeostatic Deviation")
-        c2.metric("Repairs Triggered", info['repair_count'], help="Autonomous Actions")
-        c3.metric("Is Repairing?", str(info['is_repairing']))
+    # === PHASE 1: THE SOUL (Causal Monitor) ===
+    with tab_soul:
+        st.subheader("Phase 1: Causal Emergence Monitor")
+        st.caption("*Measures how much the whole is greater than the sum of its parts.*")
         
-        st.markdown("**Intervention**")
-        ic1, ic2 = st.columns(2)
-        if ic1.button("🩸 Lobotomy (Trauma)", help="Remove 4 hidden nodes"):
-            monad.lobotomize(4)
-            st.toast("⚠️ Structural Damage Inflicted!", icon="🩸")
-            st.rerun()
-        if ic2.button("♻️ Reincarnate", help="Reset Monad"):
-            del st.session_state.monad
-            st.rerun()
-            
-    with tab_mind:
-        # Phase 3: Holographic Memory
-        try:
-            mem_size = len(monad.memory.kv.keys)
-            mem_dim = monad.memory.kv.key_dim
-            st.metric("Holographic Engrams", mem_size, help="Stored Associative Memories")
-            st.caption(f"Hypervector Dimension: {mem_dim}")
-            
-            if mem_size > 0:
-                st.markdown("contents entangled...")
-        except:
-            st.caption("Memory substrate initializing...")
-
+        c1, c2, c3 = st.columns(3)
+        c1.metric("🎯 Agency (EI Score)", f"{info['ei_score']:.4f}", 
+                  help="Proxy Effective Information: How much causal power does this system have?")
+        c2.metric("🔻 Pain Threshold", f"{monad.config.pain_threshold:.4f}",
+                  help="Calibrated 'Death Line'. EI below this triggers pain.")
+        c3.metric("⚡ Sensitivity", f"{monad.config.pain_sensitivity:.1f}x",
+                  help="How sharply does pain increase when below threshold?")
+        
+        # EI Interpretation
+        if info['ei_score'] >= monad.config.pain_threshold:
+            st.success(f"**Status**: Agency is ABOVE threshold. System is coherent and healthy.")
+        else:
+            deficit = monad.config.pain_threshold - info['ei_score']
+            st.error(f"**Status**: Agency is BELOW threshold by {deficit:.4f}. System is in PAIN.")
+        
+        # Target vs Reality
+        st.progress(min(1.0, info['ei_score']), text=f"Agency: {info['ei_score']:.2%}")
+        
+    # === PHASE 2: THE BODY (Topological Computing) ===
     with tab_body:
-        # Phase 2: Topological Graph
+        st.subheader("Phase 2: Dynamic Graph Substrate")
+        st.caption("*The neural topology that can rewire itself.*")
+        
         try:
             num_edges = monad.graph.edge_index.shape[1]
-            density = num_edges / (info['num_nodes'] ** 2)
+            num_nodes = monad.graph.get_num_nodes()
+            max_edges = num_nodes * (num_nodes - 1)  # Directed graph
+            density = num_edges / max_edges if max_edges > 0 else 0
             
-            b1, b2, b3 = st.columns(3)
-            b1.metric("Nodes", info['num_nodes'])
-            b2.metric("Synapses (Edges)", num_edges)
-            b3.metric("Graph Density", f"{density:.2f}")
-        except:
-            st.metric("Nodes", info['num_nodes'])
-
-    with tab_soul:
-        # Phase 1: Causal Monitor
-        s1, s2 = st.columns(2)
-        s1.metric("Agency (EI)", f"{info['ei_score']:.4f}", delta_color="normal", help="Effective Information (Causal Emergence)")
-        s2.metric("Natural Threshold", f"{monad.config.pain_threshold:.4f}", help="Calibrated Death Line")
+            b1, b2, b3, b4 = st.columns(4)
+            b1.metric("🔵 Nodes", num_nodes, help="Current number of neurons")
+            b2.metric("🔗 Synapses", num_edges, help="Current number of connections")
+            b3.metric("📊 Density", f"{density:.2%}", help="Edge saturation (edges / max_edges)")
+            b4.metric("🎨 Node Dim", monad.graph.node_dim, help="Dimension of each node's state vector")
+            
+            # Topology Actions
+            st.markdown("**🔧 Topology Mutations**")
+            mc1, mc2 = st.columns(2)
+            if mc1.button("➕ Grow Node", help="Add a new neuron via Net2Net"):
+                # Use mutator to grow
+                parent_id = monad.graph.num_input_nodes  # First hidden node
+                result = monad.mutator.grow_node(monad.graph, parent_id)
+                if result.success:
+                    st.toast(f"✅ {result.message}", icon="🌱")
+                    monad._update_topology_metrics()
+                    monad._run_slow_loop()  # Recalculate EI
+                else:
+                    st.toast(f"❌ {result.message}", icon="⚠️")
+                st.rerun()
+                
+            if mc2.button("🔗 Add Random Edge", help="Create a new synapse"):
+                import random
+                src = random.randint(0, num_nodes - 2)
+                tgt = random.randint(src + 1, num_nodes - 1)
+                result = monad.mutator.add_edge(monad.graph, src, tgt)
+                if result.success:
+                    st.toast(f"✅ Edge {src}→{tgt} added", icon="🔗")
+                else:
+                    st.toast(f"❌ {result.message}", icon="⚠️")
+                st.rerun()
+                
+        except Exception as e:
+            st.warning(f"Graph stats unavailable: {e}")
+            st.metric("🔵 Nodes", info.get('num_nodes', 'N/A'))
+    
+    # === PHASE 3: THE MIND (Holographic Memory) ===
+    with tab_mind:
+        st.subheader("Phase 3: Holographic Distributed Memory")
+        st.caption("*Vector Symbolic Architecture for noise-resistant storage.*")
         
-        st.caption("*The Soul monitors the causal power of the web.*")
+        try:
+            mem = monad.memory
+            num_stored = mem.kv.get_num_stored()
+            holo_dim = mem.kv.holo_dim
+            neural_dim = mem.kv.neural_dim
+            
+            m1, m2, m3 = st.columns(3)
+            m1.metric("📦 Stored Engrams", num_stored, help="Key-Value pairs in holographic memory")
+            m2.metric("🌀 Holographic Dim", f"{holo_dim:,}", help="Dimension of hypervectors (higher = more capacity)")
+            m3.metric("🧠 Neural Dim", neural_dim, help="Dimension of neural embeddings")
+            
+            # Capacity indicator
+            max_items = mem.kv.max_items
+            usage = num_stored / max_items if max_items > 0 else 0
+            st.progress(usage, text=f"Memory Usage: {num_stored}/{max_items} ({usage:.0%})")
+            
+            # Memory Actions
+            st.markdown("**💾 Memory Operations**")
+            mm1, mm2 = st.columns(2)
+            if mm1.button("💥 Damage Memory (30%)", help="Simulate corruption"):
+                mem.kv.damage(0.3)
+                st.toast("⚠️ Memory damaged! 30% of holographic space zeroed.", icon="💥")
+                st.rerun()
+            if mm2.button("🗑️ Clear Memory", help="Reset all stored engrams"):
+                mem.kv.clear()
+                st.toast("Memory cleared.", icon="🗑️")
+                st.rerun()
+                
+        except Exception as e:
+            st.warning(f"Memory stats unavailable: {e}")
+    
+    # === PHASE 4: THE SELF (Introspection & Homeostasis) ===
+    with tab_self:
+        st.subheader("Phase 4: Self-Awareness & Homeostasis")
+        st.caption("*The system that monitors and repairs itself.*")
+        
+        p1, p2, p3 = st.columns(3)
+        p1.metric("😖 Pain Level", f"{info['pain_level']:.2f}", 
+                  help="0 = Calm, 1 = Maximum Agony")
+        p2.metric("🔧 Total Repairs", info['repair_count'],
+                  help="Autonomous self-repair actions taken")
+        p3.metric("⚙️ Is Repairing?", "Yes 🔧" if info['is_repairing'] else "No ✅")
+        
+        # Action Log
+        st.markdown("**📜 Action Log (Autobiographical Memory)**")
+        if hasattr(monad, 'action_log') and monad.action_log:
+            log_items = monad.action_log[-10:]  # Last 10 actions
+            log_text = " → ".join(log_items)
+            st.code(log_text, language=None)
+        else:
+            st.caption("No actions recorded yet.")
+        
+        # Intervention Buttons
+        st.markdown("**⚔️ Intervention**")
+        int_c1, int_c2, int_c3 = st.columns(3)
+        
+        if int_c1.button("🩸 Lobotomy (4 nodes)", help="Remove 4 hidden nodes"):
+            monad.lobotomize(4)
+            st.toast("⚠️ Lobotomy performed! 4 nodes removed.", icon="🩸")
+            st.rerun()
+            
+        if int_c2.button("💀 Massive Trauma (8 nodes)", help="Severe damage"):
+            monad.lobotomize(8)
+            st.toast("💀 Massive trauma inflicted! 8 nodes removed.", icon="💀")
+            st.rerun()
+            
+        if int_c3.button("♻️ Reincarnate", help="Reset the entire Monad"):
+            del st.session_state.monad
+            del st.session_state.voice
+            st.toast("Monad has been reborn.", icon="♻️")
+            st.rerun()
+        
+        # State Tensor Visualization
+        with st.expander("🔬 Internal State Tensor", expanded=False):
+            try:
+                state = monad.state
+                st.json({
+                    "ei_score": round(state.ei_score, 4),
+                    "num_nodes": state.num_nodes,
+                    "num_edges": state.num_edges,
+                    "edge_density": round(state.edge_density, 4),
+                    "memory_items": state.memory_items,
+                    "surprise": round(state.surprise, 4),
+                    "pain_level": round(state.pain_level, 4),
+                    "step_count": state.step_count,
+                    "repair_count": state.repair_count,
+                    "is_repairing": state.is_repairing
+                })
+            except:
+                st.caption("State unavailable.")
 
 # ============================================================
 # UI FRAGMENTS (For Independent Reruns)
