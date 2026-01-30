@@ -390,7 +390,9 @@ class DivineMonad(nn.Module):
             'num_nodes': self.state.num_nodes,
             'num_edges': self.state.num_edges,
             'is_repairing': self.state.is_repairing,
-            'step': self.state.step_count
+            'repair_count': self.state.repair_count,
+            'step': self.state.step_count,
+            'action_log': self.action_log[-5:] if hasattr(self, 'action_log') and self.action_log else []
         }
         
         return output, info
