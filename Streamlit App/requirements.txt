@@ -1,6 +1,6 @@
 torch
 requests
 watchdog
-google-genai
+google-generativeai
 python-dotenv
-streamlit>=1.37.0
+streamlit
