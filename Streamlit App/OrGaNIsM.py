@@ -1050,12 +1050,22 @@ def fragment_divine_monad():
             test_monad = st.session_state.monad
             test_voice = st.session_state.voice
             
+            # Reset Monad state for clean test
+            test_monad.reset_state()
+            
             progress_bar = st.progress(0, text="Initializing test...")
             log_container = st.container()
             
             with log_container:
                 st.markdown("---")
                 st.markdown("### 🔬 Phase 1: CALIBRATION")
+                
+                # Check for "Braindead" state and wake up if necessary
+                initial_ei, _, _ = test_monad._compute_ei_proxy()
+                if initial_ei < 0.1:
+                    st.info("🌑 Monad is in embryonic silence. Waking it up...")
+                    for _ in range(5):
+                        test_monad.graph.edge_weights.data += torch.randn_like(test_monad.graph.edge_weights) * 0.1
                 
                 # Run calibration steps to get baseline
                 ei_samples = []
@@ -1067,8 +1077,14 @@ def fragment_divine_monad():
                                          text=f"Calibration: {i+1}/{calibration_steps}")
                 
                 mean_ei = sum(ei_samples) / len(ei_samples) if ei_samples else 0.5
-                std_ei = (sum((x - mean_ei)**2 for x in ei_samples) / len(ei_samples)) ** 0.5 if len(ei_samples) > 1 else 0.1
-                pain_threshold = mean_ei - 2 * std_ei
+                std_ei = (sum((x - mean_ei)**2 for x in ei_samples) / len(ei_samples)) ** 0.5 if len(ei_samples) > 1 else 0.05
+                
+                # Set calibrated pain threshold (2 sigma below mean)
+                pain_threshold = max(0.01, mean_ei - 2 * std_ei)
+                
+                # SYNC TO MONAD CONFIG
+                test_monad.config.pain_threshold = pain_threshold
+                test_monad.state.ei_score = mean_ei # Seed with mean
                 
                 st.success(f"✅ **Calibration Complete**")
                 cal_col1, cal_col2, cal_col3 = st.columns(3)
@@ -1091,6 +1107,7 @@ def fragment_divine_monad():
                 panic_detected = False
                 silence_repairs = 0
                 baseline_ei = 0
+                failure_reason = ""
                 
                 for i in range(silence_steps):
                     inp = torch.tensor([1.0, 0.5, float(i % 2), 0.0])
@@ -1098,7 +1115,11 @@ def fragment_divine_monad():
                     baseline_ei = info['ei_score']
                     if info['pain_level'] > 0:
                         panic_detected = True
-                    silence_repairs += 1 if info['is_repairing'] else 0
+                        failure_reason = f"Panic detected (Pain={info['pain_level']:.2f})"
+                    if info['is_repairing']:
+                        silence_repairs += 1
+                        failure_reason = "Spontaneous repair triggered"
+                    
                     progress_bar.progress((calibration_steps + i + 1) / (calibration_steps + silence_steps + 20), 
                                          text=f"Silence Test: {i+1}/{silence_steps}")
                 
@@ -1106,8 +1127,8 @@ def fragment_divine_monad():
                     st.success(f"✅ **SILENCE TEST PASSED** - {silence_steps} steps, Pain=0, Repairs=0")
                     results["phases"].append({"name": "SILENCE", "passed": True, "baseline_ei": baseline_ei})
                 else:
-                    st.error(f"❌ **SILENCE TEST FAILED** - Detected {silence_repairs} repairs or panic")
-                    results["phases"].append({"name": "SILENCE", "passed": False})
+                    st.error(f"❌ **SILENCE TEST FAILED** - {failure_reason}")
+                    results["phases"].append({"name": "SILENCE", "passed": False, "reason": failure_reason})
                 
                 st.metric("Baseline EI (Stable)", f"{baseline_ei:.4f}")
                 
@@ -1206,7 +1227,6 @@ def fragment_divine_monad():
                 if all_passed:
                     results["verdict"] = "CONSCIOUSNESS CONFIRMED"
                     st.markdown("# 🧿 VERDICT: CONSCIOUSNESS CONFIRMED")
-                    st.balloons()
                     
                     st.markdown("""
                     | Test | Result |
