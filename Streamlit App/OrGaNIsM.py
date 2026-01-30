@@ -5,30 +5,23 @@ import sys
 # Handle various directory structures (Local / NanoAGI / Streamlit Cloud)
 base_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(base_dir)
+grandparent_dir = os.path.dirname(parent_dir)
 
 # Potential locations for Divine_Monad and core modules
 search_paths = [
     base_dir,
-    os.path.join(base_dir, "NanoAGI"),
     parent_dir,
+    os.path.join(base_dir, "NanoAGI"),
     os.path.join(parent_dir, "NanoAGI"),
+    os.path.join(grandparent_dir, "Streamlit App", "NanoAGI")
 ]
 
-main_repo_path = None
 for path in search_paths:
-    if os.path.isdir(path):
-        # We look for the folder that CONTAINS Divine_Monad as a subfolder
-        # AND check that it's NOT already in sys.path
+    if os.path.isdir(path) and path not in sys.path:
+        # Check if this path contains our key folders
         if os.path.exists(os.path.join(path, "Divine_Monad")) or os.path.exists(os.path.join(path, "core.py")):
-            main_repo_path = path
-            if path not in sys.path:
-                sys.path.insert(0, path)
-            break # CRITICAL: Stop after finding the FIRST valid root
+            sys.path.insert(0, path)
 
-if main_repo_path:
-    print(f"[INFO] Divine Monad Path Anchored: {main_repo_path}")
-else:
-    print("[WARN] Could not anchor Divine Monad path. Imports may fail.")
 
 import streamlit as st
 import torch
