@@ -1,5 +1,5 @@
 """
-Graph Substrate: The Dynamic Neural Graph using PyTorch Geometric.
+Graph Substrate: The Dynamic Neural Graph.
 
 This module implements the DynamicGraphNet - a fluid neural network
 whose topology can be rewired at runtime.
@@ -7,7 +7,7 @@ whose topology can be rewired at runtime.
 Architecture:
     - Nodes: Hold learnable state vectors (neuron activations)
     - Edges: Hold learnable weights (synapse strengths)
-    - Message Passing: GATv2Conv for attention-based aggregation
+    - Message Passing: Uses PyTorch Geometric if available, otherwise pure PyTorch fallback
 
 References:
     - Phase 2 Plan: Topological Computing
@@ -17,9 +17,108 @@ References:
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch_geometric.nn import GATv2Conv, MessagePassing
-from torch_geometric.data import Data
 from typing import Optional, Tuple
+
+# Try to import torch_geometric, fall back to pure PyTorch if unavailable
+try:
+    from torch_geometric.nn import GATv2Conv
+    from torch_geometric.data import Data
+    PYG_AVAILABLE = True
+except ImportError:
+    PYG_AVAILABLE = False
+    Data = None  # Placeholder
+
+
+class SimpleMessagePassing(nn.Module):
+    """
+    Pure PyTorch fallback for message passing.
+    Implements a simple attention-like aggregation without torch_geometric.
+    """
+    def __init__(self, in_channels: int, out_channels: int, num_heads: int = 4):
+        super().__init__()
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.num_heads = num_heads
+        
+        # Attention weights
+        self.W_q = nn.Linear(in_channels, out_channels * num_heads, bias=False)
+        self.W_k = nn.Linear(in_channels, out_channels * num_heads, bias=False)
+        self.W_v = nn.Linear(in_channels, out_channels * num_heads, bias=False)
+        self.W_e = nn.Linear(1, num_heads, bias=False)  # Edge weight projection
+        self.W_out = nn.Linear(out_channels * num_heads, out_channels, bias=True)
+        
+        self._init_weights()
+    
+    def _init_weights(self):
+        for m in [self.W_q, self.W_k, self.W_v, self.W_e, self.W_out]:
+            nn.init.xavier_uniform_(m.weight)
+    
+    def forward(self, x: torch.Tensor, edge_index: torch.Tensor, edge_weights: torch.Tensor) -> torch.Tensor:
+        """
+        Simple message passing.
+        
+        Args:
+            x: Node features [num_nodes, in_channels]
+            edge_index: Edge connectivity [2, num_edges]
+            edge_weights: Edge weights [num_edges, 1]
+            
+        Returns:
+            Updated node features [num_nodes, out_channels]
+        """
+        num_nodes = x.shape[0]
+        num_edges = edge_index.shape[1]
+        
+        if num_edges == 0:
+            # No edges, just project
+            return self.W_out(self.W_v(x).view(num_nodes, self.num_heads, self.out_channels).mean(dim=1))
+        
+        # Source and target indices
+        src = edge_index[0]  # [num_edges]
+        tgt = edge_index[1]  # [num_edges]
+        
+        # Get node features at source and target
+        x_src = x[src]  # [num_edges, in_channels]
+        x_tgt = x[tgt]  # [num_edges, in_channels]
+        
+        # Compute attention scores
+        q = self.W_q(x_tgt).view(-1, self.num_heads, self.out_channels)  # [num_edges, heads, out]
+        k = self.W_k(x_src).view(-1, self.num_heads, self.out_channels)  # [num_edges, heads, out]
+        v = self.W_v(x_src).view(-1, self.num_heads, self.out_channels)  # [num_edges, heads, out]
+        
+        # Dot product attention
+        attn = (q * k).sum(dim=-1) / (self.out_channels ** 0.5)  # [num_edges, heads]
+        
+        # Add edge weight contribution
+        e = self.W_e(edge_weights)  # [num_edges, heads]
+        attn = attn + e
+        
+        # Softmax over incoming edges for each target node
+        # Create scatter indices
+        attn_weights = torch.zeros(num_nodes, num_edges, self.num_heads, device=x.device)
+        for i in range(num_edges):
+            attn_weights[tgt[i], i] = F.softmax(attn[tgt == tgt[i]], dim=0).mean(dim=0)
+        
+        # Simpler approach: normalize and aggregate
+        attn = F.leaky_relu(attn, negative_slope=0.2)
+        attn = F.softmax(attn, dim=0)  # Approximate normalization
+        
+        # Weighted values
+        weighted_v = attn.unsqueeze(-1) * v  # [num_edges, heads, out]
+        
+        # Aggregate to target nodes
+        out = torch.zeros(num_nodes, self.num_heads, self.out_channels, device=x.device)
+        for i in range(num_edges):
+            out[tgt[i]] += weighted_v[i]
+        
+        # Combine heads
+        out = out.view(num_nodes, -1)  # [num_nodes, heads * out_channels]
+        out = self.W_out(out)  # [num_nodes, out_channels]
+        
+        # Residual connection (Self-Loop equivalent for Autopoiesis)
+        if x.shape == out.shape:
+             out = out + x
+
+        return out
 
 
 class DynamicGraphNet(nn.Module):
@@ -94,23 +193,28 @@ class DynamicGraphNet(nn.Module):
         self.edge_weights = nn.Parameter(torch.randn(num_edges, 1) * 0.1)
         
         # === MESSAGE PASSING LAYERS ===
-        self.conv1 = GATv2Conv(
-            in_channels=node_dim,
-            out_channels=node_dim,
-            heads=num_heads,
-            concat=False,  # Average heads instead of concat
-            edge_dim=1,    # Use edge weights as features
-            add_self_loops=False
-        )
-        
-        self.conv2 = GATv2Conv(
-            in_channels=node_dim,
-            out_channels=node_dim,
-            heads=num_heads,
-            concat=False,
-            edge_dim=1,
-            add_self_loops=False
-        )
+        if PYG_AVAILABLE:
+            self.conv1 = GATv2Conv(
+                in_channels=node_dim,
+                out_channels=node_dim,
+                heads=num_heads,
+                concat=False,  # Average heads instead of concat
+                edge_dim=1,    # Use edge weights as features
+                add_self_loops=True # Critical for Autopoiesis (Self-Causation)
+            )
+            
+            self.conv2 = GATv2Conv(
+                in_channels=node_dim,
+                out_channels=node_dim,
+                heads=num_heads,
+                concat=False,
+                edge_dim=1,
+                add_self_loops=True
+            )
+        else:
+            # Fallback to pure PyTorch implementation
+            self.conv1 = SimpleMessagePassing(node_dim, node_dim, num_heads)
+            self.conv2 = SimpleMessagePassing(node_dim, node_dim, num_heads)
         
         # === OUTPUT PROJECTION ===
         self.output_proj = nn.Linear(node_dim, 1)
@@ -157,13 +261,20 @@ class DynamicGraphNet(nn.Module):
         
         return output.squeeze(), x
     
-    def get_graph_data(self) -> Data:
-        """Return current graph as a PyG Data object."""
-        return Data(
-            x=self.node_features.detach(),
-            edge_index=self.edge_index,
-            edge_attr=self.edge_weights.detach()
-        )
+    def get_graph_data(self):
+        """Return current graph as a PyG Data object (or dict if PyG unavailable)."""
+        if PYG_AVAILABLE and Data is not None:
+            return Data(
+                x=self.node_features.detach(),
+                edge_index=self.edge_index,
+                edge_attr=self.edge_weights.detach()
+            )
+        else:
+            return {
+                'x': self.node_features.detach(),
+                'edge_index': self.edge_index,
+                'edge_attr': self.edge_weights.detach()
+            }
     
     def get_num_edges(self) -> int:
         """Return current number of edges."""
@@ -188,7 +299,7 @@ class DynamicGraphNet(nn.Module):
 
 # === UNIT TEST ===
 if __name__ == "__main__":
-    print("[TEST] Testing DynamicGraphNet...")
+    print(f"[TEST] Testing DynamicGraphNet (PyG Available: {PYG_AVAILABLE})...")
     
     # Create network
     net = DynamicGraphNet(
