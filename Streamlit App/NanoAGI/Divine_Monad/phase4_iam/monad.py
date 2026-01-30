@@ -195,44 +195,85 @@ class DivineMonad(nn.Module):
         self.state.prediction_error = 0.0
         self.action_log = ["STATE_RESET"]
 
-    def _compute_ei_proxy(self) -> Tuple[float, float, float]:
+    def _compute_ei_proxy(self, num_samples: int = 32) -> Tuple[float, float, float]:
         """
-        Compute Effective Information (simplified proxy).
+        Compute TRUE Effective Information using Erik Hoel's TPM definition.
         
-        Full EI calculation is expensive. We use a proxy based on
-        graph connectivity and node activation variance.
+        EI = H(<TPM_i>) - <H(TPM_i)>
+        
+        Where:
+        - H(<TPM_i>) = Determinism = Entropy of average output distribution
+        - <H(TPM_i)> = Degeneracy = Average entropy of individual output distributions
+        
+        For a neural network:
+        1. Sample K random inputs (maximum entropy intervention)
+        2. Record the output activation pattern for each
+        3. Build empirical transition probability matrix
+        4. Compute Determinism (entropy of average output)
+        5. Compute Degeneracy (average entropy of rows)
+        6. EI = Determinism - Degeneracy
+        
+        Reference: Erik Hoel - "When the Map is Better Than the Territory"
         
         Returns:
-            (ei_score, ei_micro, ei_macro)
+            (ei_score, determinism, degeneracy)
         """
         with torch.no_grad():
-            # 1. EI_MICRO: Node activation variance
-            # We add a small baseline and scale to ensure non-zero if graph is "alive"
-            node_var = self.graph.node_features.var(dim=0).mean().item()
-            ei_micro = min(1.0, 0.1 + node_var * 10)  # Baseline 0.1
+            n_nodes = self.graph.get_num_nodes()
             
-            # 2. EI_MACRO: Connectivity structure (Concentration/Gini)
-            edge_weights = self.graph.edge_weights.abs()
-            if edge_weights.numel() > 1:
-                # Gini coefficient approximation
-                sorted_weights = edge_weights.flatten().sort()[0]
-                n = sorted_weights.numel()
-                index = torch.arange(1, n + 1, dtype=torch.float32)
-                gini = (2 * (index * sorted_weights).sum() - (n + 1) * sorted_weights.sum()) / (n * sorted_weights.sum() + 1e-8)
-                ei_macro = min(1.0, max(0.0, gini.item()))
-            elif edge_weights.numel() == 1:
-                ei_macro = 0.2 # Small bonus for having any connection
-            else:
-                ei_macro = 0.0
+            # === 1. MAX-ENTROPY INTERVENTION ===
+            # Generate random inputs (uniform distribution = max entropy)
+            # This is the "do" operator - we intervene on all possible states equally
+            random_inputs = torch.rand(num_samples, self.config.num_input_nodes)
             
-            # 3. EI_SCORE: Emergence calculation
-            # If structure (macro) is significantly stronger than noise (micro), emergence is high.
-            # Base score is macro-driven, with a bonus for the macro/micro ratio
-            ratio = ei_macro / (ei_micro + 1e-8)
-            emergence_bonus = 0.5 if ratio > 1.2 else 0.0
-            ei_score = min(1.0, 0.5 * ei_macro + emergence_bonus)
+            # === 2. BUILD EMPIRICAL TPM ===
+            # For each input, propagate through network and record output activations
+            outputs = []
+            for i in range(num_samples):
+                x = random_inputs[i]
+                out, node_activations = self.graph(x)
+                # Use sigmoid to get activation probabilities
+                activations = torch.sigmoid(node_activations.flatten()[:n_nodes])
+                outputs.append(activations)
             
-        return ei_score, ei_micro, ei_macro
+            # Stack into tensor: [num_samples, num_nodes]
+            output_tensor = torch.stack(outputs)
+            
+            # === 3. COMPUTE AVERAGE OUTPUT DISTRIBUTION ===
+            # This is the "macro" state - the coarse-grained average behavior
+            avg_output = output_tensor.mean(dim=0)  # [num_nodes]
+            
+            # === 4. COMPUTE DETERMINISM ===
+            # Entropy of the average output distribution
+            # For continuous activations, use binary entropy: H(p) = -p*log(p) - (1-p)*log(1-p)
+            eps = 1e-8
+            p = avg_output.clamp(eps, 1-eps)
+            # Binary entropy per node, then average
+            binary_entropy_avg = -((p * p.log()) + ((1-p) * (1-p).log()))
+            determinism = binary_entropy_avg.mean().item()
+            
+            # === 5. COMPUTE DEGENERACY ===
+            # Average entropy of each sample's output distribution
+            # This measures how "noisy" individual state transitions are
+            row_entropies = []
+            for row in output_tensor:
+                p = row.clamp(eps, 1-eps)
+                h = -((p * p.log()) + ((1-p) * (1-p).log())).mean()
+                row_entropies.append(h.item())
+            degeneracy = sum(row_entropies) / len(row_entropies)
+            
+            # === 6. EFFECTIVE INFORMATION ===
+            # EI = Determinism - Degeneracy
+            # High EI = System has high determinism (predictable macro behavior)
+            #           but low degeneracy (individual states are precise)
+            raw_ei = determinism - degeneracy
+            
+            # Normalize to [0, 1] range
+            # Max theoretical EI for binary states is log(2) ≈ 0.693
+            # We scale and shift to get a usable range
+            ei_normalized = max(0.0, min(1.0, 0.5 + raw_ei * 2))
+            
+        return ei_normalized, determinism, degeneracy
     
     def _get_self_state(self) -> SelfState:
         """Convert current MonadState to SelfState for introspection."""
