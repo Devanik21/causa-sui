@@ -238,15 +238,34 @@ class DivineMonad(nn.Module):
             # This is the "do" operator - we intervene on all possible states equally
             random_inputs = torch.rand(num_samples, self.config.num_input_nodes)
             
-            # === 2. BUILD EMPIRICAL TPM ===
+            # === CRITICAL: Apply Metabolic "Life Force" to the test ===
+            # We must measure the EI of the *living* system, not just the static weights.
+            # Modulate inputs by the current metabolic phase (Heartbeat)
+            import math
+            metabolic_mod = 1.0 + self.config.circadian_amplitude * math.sin(self.metabolic_phase.item())
+            random_inputs = random_inputs * metabolic_mod
+            
+            # === 2. BUILD EMPIRICAL TPM (with Thermal Noise) ===
             # For each input, propagate through network and record output activations
             outputs = []
+            
+            # Save original node features to restore later (we are probing)
+            original_features = self.graph.node_features.clone()
+            
             for i in range(num_samples):
+                # Inject thermal noise (Neural Stochasticity) for this sample
+                # This breaks symmetry and prevents "perfectly random" 0.5 outputs
+                noise = torch.randn_like(original_features) * self.config.neural_temperature
+                self.graph.node_features.data = original_features + noise
+                
                 x = random_inputs[i]
                 out, node_activations = self.graph(x)
                 # Use sigmoid to get activation probabilities
                 activations = torch.sigmoid(node_activations.flatten()[:n_nodes])
                 outputs.append(activations)
+            
+            # Restore state
+            self.graph.node_features.data = original_features
             
             # Stack into tensor: [num_samples, num_nodes]
             output_tensor = torch.stack(outputs)
