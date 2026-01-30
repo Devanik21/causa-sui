@@ -26,18 +26,16 @@ from dataclasses import dataclass, field
 import sys
 import os
 
-# Add parent directory to path for imports
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 # Phase 2: Dynamic Graph
-from phase2_topological.graph_substrate import DynamicGraphNet
-from phase2_topological.mutator import TopologicalMutator
+from Divine_Monad.phase2_topological.graph_substrate import DynamicGraphNet
+from Divine_Monad.phase2_topological.mutator import TopologicalMutator
 
 # Phase 3: Holographic Memory
-from phase3_holographic.memory import NeuralKV, Transducer
+from Divine_Monad.phase3_holographic.memory import NeuralKV, Transducer
 
 # Phase 4: Introspection
-from phase4_iam.introspection import IntrospectionEncoder, SelfState
+from Divine_Monad.phase4_iam.introspection import IntrospectionEncoder, SelfState
+
 
 
 @dataclass
