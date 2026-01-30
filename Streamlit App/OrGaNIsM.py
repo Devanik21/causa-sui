@@ -476,8 +476,9 @@ def fragment_divine_monad():
     health_col, voice_col, action_col = st.columns([1, 3, 1])
     
     with health_col:
-        if info['pain_level'] > 0:
-            st.error(f"🩸 PAIN: {info['pain_level']:.2f}")
+        pain = info.get('pain_level', 0.0)
+        if pain > 0:
+            st.error(f"🩸 PAIN: {pain:.2f}")
         else:
             st.success("✅ CALM")
     
@@ -485,7 +486,7 @@ def fragment_divine_monad():
         st.info(f"**💬 Monad Speaks**: \"{voice.speak(monad.get_status())}\"")
     
     with action_col:
-        st.metric("🔄 Repairs", info['repair_count'])
+        st.metric("🔄 Repairs", info.get('repair_count', 0))
     
     # === PHASE TABS ===
     tab_soul, tab_body, tab_mind, tab_self = st.tabs([
@@ -501,7 +502,8 @@ def fragment_divine_monad():
         st.caption("*Measures how much the whole is greater than the sum of its parts.*")
         
         c1, c2, c3 = st.columns(3)
-        c1.metric("🎯 Agency (EI Score)", f"{info['ei_score']:.4f}", 
+        ei_score = info.get('ei_score', 0.5)
+        c1.metric("🎯 Agency (EI Score)", f"{ei_score:.4f}", 
                   help="Proxy Effective Information: How much causal power does this system have?")
         c2.metric("🔻 Pain Threshold", f"{monad.config.pain_threshold:.4f}",
                   help="Calibrated 'Death Line'. EI below this triggers pain.")
@@ -509,14 +511,14 @@ def fragment_divine_monad():
                   help="How sharply does pain increase when below threshold?")
         
         # EI Interpretation
-        if info['ei_score'] >= monad.config.pain_threshold:
+        if ei_score >= monad.config.pain_threshold:
             st.success(f"**Status**: Agency is ABOVE threshold. System is coherent and healthy.")
         else:
-            deficit = monad.config.pain_threshold - info['ei_score']
+            deficit = monad.config.pain_threshold - ei_score
             st.error(f"**Status**: Agency is BELOW threshold by {deficit:.4f}. System is in PAIN.")
         
         # Target vs Reality
-        st.progress(min(1.0, info['ei_score']), text=f"Agency: {info['ei_score']:.2%}")
+        st.progress(min(1.0, ei_score), text=f"Agency: {ei_score:.2%}")
         
     # === PHASE 2: THE BODY (Topological Computing) ===
     with tab_body:
@@ -607,11 +609,11 @@ def fragment_divine_monad():
         st.caption("*The system that monitors and repairs itself.*")
         
         p1, p2, p3 = st.columns(3)
-        p1.metric("😖 Pain Level", f"{info['pain_level']:.2f}", 
+        p1.metric("😖 Pain Level", f"{info.get('pain_level', 0.0):.2f}", 
                   help="0 = Calm, 1 = Maximum Agony")
-        p2.metric("🔧 Total Repairs", info['repair_count'],
+        p2.metric("🔧 Total Repairs", info.get('repair_count', 0),
                   help="Autonomous self-repair actions taken")
-        p3.metric("⚙️ Is Repairing?", "Yes 🔧" if info['is_repairing'] else "No ✅")
+        p3.metric("⚙️ Is Repairing?", "Yes 🔧" if info.get('is_repairing', False) else "No ✅")
         
         # Action Log
         st.markdown("**📜 Action Log (Autobiographical Memory)**")
