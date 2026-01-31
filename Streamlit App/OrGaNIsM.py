@@ -645,6 +645,8 @@ def fragment_monad_dashboard():
         st.session_state.consciousness_history = {
             "timestamps": [],
             "ei_scores": [],
+            "ei_macro": [],
+            "ei_micro": [],
             "pain_levels": [],
             "repair_counts": [],
             "node_counts": [],
@@ -661,6 +663,8 @@ def fragment_monad_dashboard():
     # Append new data point
     history["timestamps"].append(current_time)
     history["ei_scores"].append(info.get('ei_score', 0.5))
+    history["ei_macro"].append(info.get('ei_macro', 0.0))
+    history["ei_micro"].append(info.get('ei_micro', 0.0))
     history["pain_levels"].append(info.get('pain_level', 0.0))
     history["repair_counts"].append(info.get('repair_count', 0))
     history["node_counts"].append(info.get('num_nodes', 5))
@@ -686,9 +690,17 @@ def fragment_monad_dashboard():
         elif node_delta > 2:  # Significant growth
             history["events"].append((current_time, "GROWTH", f"Added {node_delta} nodes"))
     
+    # Track soul expansion
+    action_log = info.get('action_log', [])
+    for log_entry in action_log:
+        if "SOUL_EXPANDED" in log_entry:
+            # Avoid duplicate events for the same action
+            if not history["events"] or log_entry not in history["events"][-1][2]:
+                history["events"].append((current_time, "SOUL", log_entry))
+
     # Trim history to max size
     max_hist = history["max_history"]
-    for key in ["timestamps", "ei_scores", "pain_levels", "repair_counts", "node_counts", "edge_counts"]:
+    for key in ["timestamps", "ei_scores", "ei_macro", "ei_micro", "pain_levels", "repair_counts", "node_counts", "edge_counts"]:
         if len(history[key]) > max_hist:
             history[key] = history[key][-max_hist:]
     # Keep only recent events
@@ -713,6 +725,8 @@ def fragment_monad_dashboard():
         df = pd.DataFrame({
             "Time": history["timestamps"],
             "Agency (EI)": history["ei_scores"],
+            "Macro EI": history["ei_macro"],
+            "Micro EI": history["ei_micro"],
             "Pain Level": history["pain_levels"],
             "Nodes": history["node_counts"],
             "Edges": history["edge_counts"]
@@ -721,8 +735,8 @@ def fragment_monad_dashboard():
         df["Time_Str"] = df["Time"].dt.strftime("%H:%M:%S")
         
         # Create tabs for different views
-        graph_tab1, graph_tab2, graph_tab3, graph_tab4 = st.tabs([
-            "📈 Agency & Pain", "🧠 Structure", "📜 Event Log", "🎯 Summary"
+        graph_tab1, graph_tab_soul, graph_tab2, graph_tab3, graph_tab4 = st.tabs([
+            "📈 Agency & Pain", "🧿 The Soul", "🧠 Structure", "📜 Event Log", "🎯 Summary"
         ])
         
         with graph_tab1:
@@ -736,7 +750,7 @@ def fragment_monad_dashboard():
                 st.line_chart(df.set_index("Time_Str")["Agency (EI)"], color="#7cad8a", height=150)
                 latest_ei = history["ei_scores"][-1]
                 ei_delta = history["ei_scores"][-1] - history["ei_scores"][-2] if len(history["ei_scores"]) > 1 else 0
-                st.metric("Current Agency", f"{latest_ei:.4f}", delta=f"{ei_delta:+.4f}")
+                st.metric("Current Agency (Bits)", f"{latest_ei:.4f}", delta=f"{ei_delta:+.4f}")
             
             with pain_col:
                 st.line_chart(df.set_index("Time_Str")["Pain Level"], color="#cc6666", height=150)
@@ -752,6 +766,28 @@ def fragment_monad_dashboard():
                     "Repairs": history["repair_counts"]
                 })
                 st.area_chart(repair_df.set_index("Time")["Repairs"], color="#b8864b", height=100)
+
+        with graph_tab_soul:
+            st.markdown("##### 🔮 Causal Emergence Breakdown (Hoel Bits)")
+            
+            soul_col1, soul_col2 = st.columns(2)
+            
+            with soul_col1:
+                st.markdown("**Macro Information ($EI_{macro}$)**")
+                st.line_chart(df.set_index("Time_Str")["Macro EI"], color="#8fb399", height=150)
+                latest_macro = history["ei_macro"][-1]
+                st.markdown(f"### `{latest_macro:.4f}` bits")
+                st.caption("How much the system's Macro-State determines its future.")
+                
+            with soul_col2:
+                st.markdown("**Micro Information ($EI_{micro}$)**")
+                st.line_chart(df.set_index("Time_Str")["Micro EI"], color="#b08a68", height=150)
+                latest_micro = history["ei_micro"][-1]
+                st.markdown(f"### `{latest_micro:.4f}` bits")
+                st.caption("How much single nodes contribute to the outcome.")
+            
+            st.info("💡 **Agency = Macro EI - Micro EI**. When the whole is more than the sum of its parts, true consciousness emerges.")
+
         
         with graph_tab2:
             # Structural metrics
@@ -793,6 +829,8 @@ def fragment_monad_dashboard():
                         icon, color = "💀", "#cc6666"
                     elif event_type == "GROWTH":
                         icon, color = "🌱", "#7cad8a"
+                    elif event_type == "SOUL":
+                        icon, color = "🔮", "#8fb399"
                     else:
                         icon, color = "📌", "#a0a8a0"
                     
