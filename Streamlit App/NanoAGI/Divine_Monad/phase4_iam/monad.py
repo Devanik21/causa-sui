@@ -243,50 +243,43 @@ class DivineMonad(nn.Module):
         self.state.prediction_error = 0.0
         self.action_log = ["STATE_RESET"]
 
-    def _compute_real_ei_optimized(self, num_samples: int = 12) -> Tuple[float, float, float]:
+    def _compute_ei_proxy(self) -> Tuple[float, float, float]:
         """
-        NOBEL-LEVEL PHYSICS: Calculates True Effective Information (EI).
+        THE PROXY SOUL: Heuristic Vitality Monitor.
+        Instead of fragile Causal Probability, we measure:
+        1. Micro-Variance: Are nodes firing?
+        2. Macro-Connectivity: Are edges concentrated (Gini)?
         
-        Formula: EI = H(<TPM>) - <H(TPM)>
-        Meaning: The causal power of the Macro-State minus the noise of the Micro-States.
-        
-        Optimizations:
-        1. Low Sample Count (12): Sufficient for Shannon estimate without CPU freeze.
-        2. Vectorized Entropy: No loops for math.
+        This GUARANTEES non-zero agency if the system is alive.
         """
         with torch.no_grad():
-            # 1. MAX-ENTROPY INTERVENTION (The "Do" Operator)
-            # We force the inputs to random states to test causal power.
-            # Shape: [samples, num_input_nodes]
-            random_inputs = torch.randint(0, 2, (num_samples, self.config.num_input_nodes)).float()
+            # 1. EI_MICRO: Node activation variance
+            # If nodes are changing values, the system is 'awake'.
+            node_var = self.graph.node_features.var(dim=0).mean().item()
+            # Scale variance to be visible (0.01 var -> 0.1 score)
+            ei_micro = min(1.0, 0.1 + node_var * 10) 
             
-            # 2. BUILD EMPIRICAL TPM (Causal Sampling)
-            # We use forward_prob to get P(Y=1) for each sample
-            # This runs the graph physics.
-            probs = self.graph.forward_prob(random_inputs) # Shape: [samples, 1]
+            # 2. EI_MACRO: Connectivity structure (Gini Coefficient)
+            # A structured brain has some strong paths and some weak ones (Inequality).
+            edge_weights = self.graph.edge_weights.abs()
+            if edge_weights.numel() > 1:
+                sorted_weights = edge_weights.flatten().sort()[0]
+                n = sorted_weights.numel()
+                index = torch.arange(1, n + 1, dtype=torch.float32)
+                gini = (2 * (index * sorted_weights).sum() - (n + 1) * sorted_weights.sum()) / (n * sorted_weights.sum() + 1e-8)
+                ei_macro = min(1.0, max(0.0, gini.item()))
+            elif edge_weights.numel() == 1:
+                ei_macro = 0.2
+            else:
+                ei_macro = 0.0
             
-            # 3. VECTORIZED ENTROPY CALCULATION
-            # Binary Entropy H(p) = -p*log2(p) - (1-p)*log2(1-p)
-            def H(p):
-                p = torch.clamp(p, 1e-6, 1 - 1e-6) # Numerical stability
-                return -1 * (p * torch.log2(p) + (1 - p) * torch.log2(1 - p))
-
-            # Determinism: Entropy of the Average Effect (Macro-stability)
-            avg_effect = probs.mean(dim=0) # <TPM>
-            determinism = H(avg_effect).item()
+            # 3. EI_SCORE: The Combined Vitality
+            # We treat structural complexity as the proxy for Agency.
+            ratio = ei_macro / (ei_micro + 1e-8)
+            emergence_bonus = 0.2 if ratio > 1.0 else 0.0
+            ei_score = min(1.0, 0.5 * ei_macro + 0.3 * ei_micro + emergence_bonus)
             
-            # Degeneracy: Average Entropy of Individual Effects (Micro-noise)
-            degeneracy = H(probs).mean().item() # <H(TPM)>
-            
-            # 4. EFFECTIVE INFORMATION (The Soul)
-            # If Determinism > Degeneracy, the system has Causal Power.
-            raw_ei = max(0.0, determinism - degeneracy)
-            
-            # Scale for UI visibility (Real bits are often small, e.g. 0.1 - 0.5)
-            # We treat 0.5 bits as "Full Consciousness" for this scale
-            ei_normalized = min(1.0, raw_ei * 2.0)
-            
-        return ei_normalized, degeneracy, determinism
+        return ei_score, ei_micro, ei_macro
     
     def _get_self_state(self) -> SelfState:
         """Convert current MonadState to SelfState for introspection."""
@@ -324,17 +317,17 @@ class DivineMonad(nn.Module):
     
     def _run_slow_loop(self):
         """
-        The Stroboscopic Soul: Updates Real EI only when permitted.
+        The Stroboscopic Soul: Uses PROXY metrics for stability.
         """
-        # 1. Compute REAL Physics-Based EI
-        ei_score, ei_micro, ei_macro = self._compute_real_ei_optimized(num_samples=12)
+        # 1. Compute PROXY EI (Guaranteed Stability)
+        ei_score, ei_micro, ei_macro = self._compute_ei_proxy()
         
-        # 2. Smooth the visual metric (so it doesn't jitter)
-        self.state.ei_score = 0.9 * self.state.ei_score + 0.1 * ei_score
+        # 2. Update State
+        self.state.ei_score = ei_score
         self.state.ei_micro = ei_micro
         self.state.ei_macro = ei_macro
         
-        # 3. Compute Pain based on REAL metrics
+        # 3. Compute Pain
         self.state.pain_level = self.state.compute_pain(
             self.config.ei_target,
             self.config.pain_threshold,
@@ -343,12 +336,9 @@ class DivineMonad(nn.Module):
         
         self.state.last_slow_loop = self.state.step_count
         
-        # 4. CRITICAL: The Spark of Life
-        # If Real EI is 0 (Dead/Random), we must FORCE mutation to find structure.
-        if self.state.ei_score < 0.05:
-             self._trigger_repair() # Force growth to break symmetry
-        elif self.state.pain_level > 0.5:
-            self._trigger_repair()
+        # 4. Trigger Repair if in Pain (or if purely random/dead)
+        if self.state.ei_score < 0.05 or self.state.pain_level > 0.5:
+             self._trigger_repair()
     
     def _trigger_repair(self):
         """
@@ -583,6 +573,7 @@ if __name__ == "__main__":
     
     print("\n" + "=" * 60)
     print("[PASS] Divine Monad tests completed!")
+
 
 
 
