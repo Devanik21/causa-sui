@@ -173,6 +173,8 @@ class DivineMonad(nn.Module):
         
         # Action log for VoiceBox
         self.action_log: List[str] = []
+        # === THE SPARK ===
+        self._vitalize_structure()
         
     def _vitalize_structure(self):
         """
@@ -529,4 +531,5 @@ if __name__ == "__main__":
     
     print("\n" + "=" * 60)
     print("[PASS] Divine Monad tests completed!")
+
 
