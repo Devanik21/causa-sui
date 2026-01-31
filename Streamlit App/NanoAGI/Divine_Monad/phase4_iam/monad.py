@@ -184,15 +184,15 @@ class DivineMonad(nn.Module):
         # This assumes 4 input nodes. If that changes, this must update.
         self.all_inputs = self._generate_binary_inputs(self.config.num_input_nodes)
         
+        # Action log for VoiceBox
+        self.action_log: List[str] = []
+        
     def _generate_binary_inputs(self, n: int) -> torch.Tensor:
         """Generate all 2^n binary vectors."""
         import itertools
         lst = list(itertools.product([0, 1], repeat=n))
         return torch.tensor(lst, dtype=torch.float32)
-        
-        # Action log for VoiceBox
-        self.action_log: List[str] = []
-        
+
     def _update_topology_metrics(self):
         """Update topology-related metrics in state."""
         self.state.num_nodes = self.graph.get_num_nodes()
