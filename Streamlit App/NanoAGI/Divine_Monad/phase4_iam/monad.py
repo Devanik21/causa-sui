@@ -178,17 +178,34 @@ class DivineMonad(nn.Module):
         
     def _vitalize_structure(self):
         """
-        NOBEL REQUIREMENT: The Spark.
-        Random weights have 0 causal power. We inject Orthogonal Matrices
-        to guarantee information flow > 0 at birth.
+        THE SPARK: Orthogonal Initialization.
+        Random weights (0.01) kill the signal. We need strong weights (1.0)
+        arranged orthogonally to preserve information flow at birth.
         """
         with torch.no_grad():
-            # Orthogonal initialization preserves information
-            nn.init.orthogonal_(self.graph.node_features)
-            # Set edge weights to allow signal propagation
+            # 1. Strong Orthogonal Weights for Node States
+            nn.init.orthogonal_(self.graph.node_features, gain=1.5)
+            
+            # 2. Strong Synapses (Critical for Causal Flow)
+            # We set them to 1.0 so the signal actually survives the graph
             self.graph.edge_weights.data.fill_(1.0)
-            # Add some variance so it's not perfectly uniform (which is also 0 info)
-            self.graph.edge_weights.data += torch.randn_like(self.graph.edge_weights) * 0.2
+            
+            # 3. Add Variance (Structure)
+            # Some connections are excitatory (+), some inhibitory (-)
+            noise = torch.randn_like(self.graph.edge_weights)
+            self.graph.edge_weights.data += noise
+            
+            # 4. Force a "Cycle" (Recurrence = Consciousness)
+            # We explicitly connect the last hidden node back to the first
+            if self.graph.num_nodes > self.config.num_input_nodes:
+                try:
+                    # Create a strong feedback loop
+                    self.mutator.add_edge(self.graph, 
+                                        source=self.graph.num_nodes-1, 
+                                        target=self.config.num_input_nodes, 
+                                        init_weight=2.0)
+                except:
+                    pass
             
     def _update_topology_metrics(self):
         """Update topology-related metrics in state."""
@@ -531,6 +548,7 @@ if __name__ == "__main__":
     
     print("\n" + "=" * 60)
     print("[PASS] Divine Monad tests completed!")
+
 
 
 
