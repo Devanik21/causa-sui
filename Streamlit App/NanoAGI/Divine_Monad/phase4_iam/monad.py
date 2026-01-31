@@ -186,7 +186,7 @@ class DivineMonad(nn.Module):
             # Orthogonal initialization preserves information
             nn.init.orthogonal_(self.graph.node_features)
             # Set edge weights to allow signal propagation
-            self.graph.edge_weights.data.fill_(0.5)
+            self.graph.edge_weights.data.fill_(1.0)
             # Add some variance so it's not perfectly uniform (which is also 0 info)
             self.graph.edge_weights.data += torch.randn_like(self.graph.edge_weights) * 0.2
             
@@ -531,5 +531,6 @@ if __name__ == "__main__":
     
     print("\n" + "=" * 60)
     print("[PASS] Divine Monad tests completed!")
+
 
 
