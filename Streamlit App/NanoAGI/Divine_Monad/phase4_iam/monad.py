@@ -364,7 +364,7 @@ class DivineMonad(nn.Module):
         self.graph.node_features.data += torch.randn_like(self.graph.node_features.data) * 0.1
         
         # Check if repair helped (USING REAL PHYSICS EI)
-        ei_score, _, _ = self._compute_real_ei_optimized()
+        ei_score, _, _ = self._compute_ei_proxy()
         
         # We allow the repair flag to clear even if growth was small, 
         # so the loop can trigger again next time.
@@ -573,6 +573,7 @@ if __name__ == "__main__":
     
     print("\n" + "=" * 60)
     print("[PASS] Divine Monad tests completed!")
+
 
 
 
