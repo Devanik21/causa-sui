@@ -114,10 +114,6 @@ class SimpleMessagePassing(nn.Module):
         out = out.view(num_nodes, -1)  # [num_nodes, heads * out_channels]
         out = self.W_out(out)  # [num_nodes, out_channels]
         
-        # Residual connection (Self-Loop equivalent for Autopoiesis)
-        if x.shape == out.shape:
-             out = out + x
-
         return out
 
 
@@ -200,7 +196,7 @@ class DynamicGraphNet(nn.Module):
                 heads=num_heads,
                 concat=False,  # Average heads instead of concat
                 edge_dim=1,    # Use edge weights as features
-                add_self_loops=True # Critical for Autopoiesis (Self-Causation)
+                add_self_loops=False
             )
             
             self.conv2 = GATv2Conv(
@@ -209,7 +205,7 @@ class DynamicGraphNet(nn.Module):
                 heads=num_heads,
                 concat=False,
                 edge_dim=1,
-                add_self_loops=True
+                add_self_loops=False
             )
         else:
             # Fallback to pure PyTorch implementation
@@ -260,6 +256,55 @@ class DynamicGraphNet(nn.Module):
         output = torch.sigmoid(output)  # Probability output
         
         return output.squeeze(), x
+    
+    def forward_prob(self, x_batch: torch.Tensor) -> torch.Tensor:
+        """
+        Calculates P(Y=1) for a batch of inputs.
+        Essential for Effective Information (EI) calculation.
+        
+        Args:
+            x_batch: Binary input tensor [batch_size, num_input_nodes]
+            
+        Returns:
+            probs: Probability of output being 1. Shape: [batch_size, 1]
+        """
+        # Ensure batch dim
+        if x_batch.dim() == 1:
+            x_batch = x_batch.unsqueeze(0)
+            
+        batch_size = x_batch.shape[0]
+        probs = []
+        
+        # We process manually because the node_features are shared parameters
+        # and we need to inject specific inputs for each item in the batch.
+        # Ideally, we would vectorize this, but for dynamic graphs, 
+        # a simple loop over the batch for the "input set" is safer for now.
+        # Given batch sizes are small (16 for 4 inputs), this is fast.
+        
+        for i in range(batch_size):
+            # 1. Clone base state
+            x = self.node_features.clone()
+            
+            # 2. Inject input
+            current_input = x_batch[i]
+            for j in range(min(current_input.shape[0], self.num_input_nodes)):
+                x[j, 0] = current_input[j]
+            
+            # 3. Message Passing (Hops have to match forward())
+            x = self.conv1(x, self.edge_index, self.edge_weights)
+            x = F.relu(x)
+            
+            x = self.conv2(x, self.edge_index, self.edge_weights)
+            x = F.relu(x)
+            
+            # 4. Output
+            output_start = self.num_nodes - self.num_output_nodes
+            output_nodes = x[output_start:]
+            out = self.output_proj(output_nodes)
+            out = torch.sigmoid(out)
+            probs.append(out)
+            
+        return torch.stack(probs)
     
     def get_graph_data(self):
         """Return current graph as a PyG Data object (or dict if PyG unavailable)."""
