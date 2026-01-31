@@ -1535,7 +1535,7 @@ def fragment_monad_dashboard():
                 std_ei = (sum((x - mean_ei)**2 for x in ei_samples) / len(ei_samples)) ** 0.5 if len(ei_samples) > 1 else 0.05
                 
                 # Set calibrated pain threshold (2 sigma below mean)
-                pain_threshold = max(0.01, mean_ei - 2 * std_ei)
+                pain_threshold = max(0.01, mean_ei - 4 * std_ei)
                 
                 # SYNC TO MONAD CONFIG
                 test_monad.config.pain_threshold = pain_threshold
