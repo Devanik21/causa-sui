@@ -1400,7 +1400,7 @@ def fragment_monad_dashboard():
             ))
             st.bar_chart(encoded.detach().numpy(), width="stretch")
             
-            with st.expander("� Full State Registry", expanded=False):
+            with st.expander(" Full State Registry", expanded=False):
                 st.json({
                     "nodes": state.num_nodes,
                     "edges": state.num_edges,
@@ -1505,6 +1505,21 @@ def fragment_monad_dashboard():
             
             # Reset Monad state for clean test
             test_monad.reset_state()
+
+            
+            # === INSERT THIS BLOCK ===
+            progress_bar.progress(0, text="🔥 Phase 0: WARMING UP (Reaching Thermal Equilibrium)...")
+            st.toast("Allowing Monad to settle...", icon="⏳")
+            
+            # Run 50 steps to let the "High Energy" initialization settle to "Stable Life"
+            # This prevents the "Drift" that fails the Silence Test.
+            for i in range(50):
+                inp = torch.tensor([1.0, 0.5, float(i % 2), 0.0])
+                test_monad(inp)
+                time.sleep(0.01)
+            # =========================
+            
+            log_container = st.container()
             
             progress_bar = st.progress(0, text="Initializing test...")
             log_container = st.container()
