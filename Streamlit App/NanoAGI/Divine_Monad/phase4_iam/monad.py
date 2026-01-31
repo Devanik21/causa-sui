@@ -187,6 +187,33 @@ class DivineMonad(nn.Module):
         # Action log for VoiceBox
         self.action_log: List[str] = []
         
+        # === BOOTSTRAP AGENCY (The Spark of Life) ===
+        # Ensure we don't start as a zombie (0.00 EI)
+        self._bootstrap_agency()
+        
+    def _bootstrap_agency(self):
+        """
+        Force-inject a 'Skeleton of Life' into the graph.
+        Random weights have 0.00 causal power. We need a spark.
+        """
+        # Connect Input[0] -> Hidden[0] -> Output[0] with STRONG weights
+        # This guarantees at least one causal path exists.
+        try:
+            # 1. Input -> Hidden
+            self.mutator.add_edge(self.graph, source=0, target=self.config.num_input_nodes, init_weight=2.0)
+            
+            # 2. Hidden -> Output
+            hidden_node = self.config.num_input_nodes
+            output_node = self.config.num_nodes - 1
+            self.mutator.add_edge(self.graph, source=hidden_node, target=output_node, init_weight=2.0)
+            
+            # 3. Add a little noise to hidden node bias to break symmetry
+            self.graph.node_features.data[hidden_node] += 0.5
+            
+            self.action_log.append("SPARK_OF_LIFE")
+        except:
+            pass  # If graph too small, ignore
+        
     def _generate_binary_inputs(self, n: int) -> torch.Tensor:
         """Generate all 2^n binary vectors."""
         import itertools
@@ -229,10 +256,12 @@ class DivineMonad(nn.Module):
             self.all_inputs = self.all_inputs.to(self.graph.node_features.device)
             
         # 1. Calculate Micro EI
-        ei_micro = effective_info.calc_micro_ei(self.graph, self.all_inputs)
+        # Use temperature=0.1 to SHARPEN the probabilities.
+        # This prevents "grey noise" (p=0.5) from washing out all causal power.
+        ei_micro = effective_info.calc_micro_ei(self.graph, self.all_inputs, temperature=0.1)
         
         # 2. Calculate Macro EI (using current Soul partition)
-        ei_macro = effective_info.calc_macro_ei(self.graph, self.all_inputs, self.partition_fn)
+        ei_macro = effective_info.calc_macro_ei(self.graph, self.all_inputs, self.partition_fn, temperature=0.1)
         
         # 3. Emergence Score
         # We do NOT clamp this. If the Monad becomes super-causal, let it shine.
@@ -260,8 +289,11 @@ class DivineMonad(nn.Module):
         
         # Test Mutation
         # We calculate Macro EI with the NEW partition
-        ei_macro_new = effective_info.calc_macro_ei(self.graph, self.all_inputs, mutated_partition)
-        ei_micro = effective_info.calc_micro_ei(self.graph, self.all_inputs) # Micro doesn't change
+        # MUST use same temperature as main loop!
+        ei_macro_new = effective_info.calc_macro_ei(self.graph, self.all_inputs, mutated_partition, temperature=0.1)
+        
+        # We need current micro score to compare (already calculated correctly in compute_causal_emergence)
+        _, ei_micro, _ = self._compute_causal_emergence()
         
         new_score = ei_macro_new - ei_micro
         
