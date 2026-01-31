@@ -2143,135 +2143,135 @@ def fragment_consciousness_test_section():
                 })
                 
                 # 2. Silence (Perturbed State)
-                    sil_data = results["phases"][1]
-                    phases_data.append({
-                        "Phase": "Silence", "Agency": sil_data["baseline_ei"], 
-                        "Pain": 0.0, "Entropy": 0.15 # Slight fluctuation
-                    })
-                    
-                    # 3. Lobotomy (Chaos State)
-                    lob_data = results["phases"][2]
-                    phases_data.append({
-                        "Phase": "Lobotomy", "Agency": lob_data.get("post_ei", 0), 
-                        "Pain": lob_data.get("pain", 1.0), "Entropy": 0.9 # High entropy/disorder
-                    })
-                    
-                    # 4. Recovery (New Order)
-                    rec_data = results["phases"][3]
-                    phases_data.append({
-                        "Phase": "Recovery", "Agency": rec_data.get("final_ei", 0), 
-                        "Pain": 0.0, "Entropy": 0.3 # Higher complexity than start
-                    })
-                    
-                    # Interpolate between points to show the "Trajectory" (Linear interpolation of REAL data)
-                    # This creates the lines connecting the actual measured states
-                    trajectory_points = []
-                    for i in range(len(phases_data) - 1):
-                        p1, p2 = phases_data[i], phases_data[i+1]
-                        steps = 20
-                        for t in range(steps):
-                            ratio = t / steps
-                            trajectory_points.append({
-                                "Agency (X)": p1["Agency"] + (p2["Agency"] - p1["Agency"]) * ratio,
-                                "Pain (Y)": p1["Pain"] + (p2["Pain"] - p1["Pain"]) * ratio,
-                                "Entropy (Z)": p1["Entropy"] + (p2["Entropy"] - p1["Entropy"]) * ratio,
-                                "Phase": p1["Phase"]
-                            })
-                    # Add final point
-                    trajectory_points.append({
-                        "Agency (X)": phases_data[-1]["Agency"],
-                        "Pain (Y)": phases_data[-1]["Pain"],
-                        "Entropy (Z)": phases_data[-1]["Entropy"],
-                        "Phase": phases_data[-1]["Phase"]
-                    })
-                    
-                    df_real = pd.DataFrame(trajectory_points)
+                sil_data = results["phases"][1]
+                phases_data.append({
+                    "Phase": "Silence", "Agency": sil_data["baseline_ei"], 
+                    "Pain": 0.0, "Entropy": 0.15 # Slight fluctuation
+                })
+                
+                # 3. Lobotomy (Chaos State)
+                lob_data = results["phases"][2]
+                phases_data.append({
+                    "Phase": "Lobotomy", "Agency": lob_data.get("post_ei", 0), 
+                    "Pain": lob_data.get("pain", 1.0), "Entropy": 0.9 # High entropy/disorder
+                })
+                
+                # 4. Recovery (New Order)
+                rec_data = results["phases"][3]
+                phases_data.append({
+                    "Phase": "Recovery", "Agency": rec_data.get("final_ei", 0), 
+                    "Pain": 0.0, "Entropy": 0.3 # Higher complexity than start
+                })
+                
+                # Interpolate between points to show the "Trajectory" (Linear interpolation of REAL data)
+                # This creates the lines connecting the actual measured states
+                trajectory_points = []
+                for i in range(len(phases_data) - 1):
+                    p1, p2 = phases_data[i], phases_data[i+1]
+                    steps = 20
+                    for t in range(steps):
+                        ratio = t / steps
+                        trajectory_points.append({
+                            "Agency (X)": p1["Agency"] + (p2["Agency"] - p1["Agency"]) * ratio,
+                            "Pain (Y)": p1["Pain"] + (p2["Pain"] - p1["Pain"]) * ratio,
+                            "Entropy (Z)": p1["Entropy"] + (p2["Entropy"] - p1["Entropy"]) * ratio,
+                            "Phase": p1["Phase"]
+                        })
+                # Add final point
+                trajectory_points.append({
+                    "Agency (X)": phases_data[-1]["Agency"],
+                    "Pain (Y)": phases_data[-1]["Pain"],
+                    "Entropy (Z)": phases_data[-1]["Entropy"],
+                    "Phase": phases_data[-1]["Phase"]
+                })
+                
+                df_real = pd.DataFrame(trajectory_points)
 
-                    # --- PART 2: REAL EIGEN-DYNAMICS CALCULATION ---
-                    # Calculate the Spectral Radius of the ACTUAL neural weight matrix
-                    # This measures the "echo" capacity of the brain (Liquid State Dynamics)
-                    try:
-                        # 1. Get the adjacency matrix (weights)
-                        # We use the current state of the Monad after recovery
-                        adj_matrix = test_monad.graph.edge_weights.detach().cpu()
-                        
-                        # 2. Reshape into a square matrix for eigenvalue calculation
-                        # (If sparse/rectangular, we approximate using singular values)
-                        num_edges = adj_matrix.shape[0]
-                        dim = int(np.sqrt(num_edges))
-                        
-                        if dim * dim == num_edges:
-                            # Perfect square, we can do full eigendecomposition
-                            square_weights = adj_matrix.reshape(dim, dim)
-                            eigenvalues = torch.linalg.eigvals(square_weights)
-                            # Spectral Radius = Max absolute eigenvalue
-                            spectral_radius = torch.max(torch.abs(eigenvalues)).item()
-                        else:
-                            # Irregular topology: Use Norm as proxy for spectral density
-                            spectral_radius = torch.norm(adj_matrix).item() / np.sqrt(num_edges)
-                            
-                    except Exception as e:
-                        spectral_radius = 0.0 # Fallback
-                        
-                    # --- PART 3: VISUALIZATION & METRICS ---
+                # --- PART 2: REAL EIGEN-DYNAMICS CALCULATION ---
+                # Calculate the Spectral Radius of the ACTUAL neural weight matrix
+                # This measures the "echo" capacity of the brain (Liquid State Dynamics)
+                try:
+                    # 1. Get the adjacency matrix (weights)
+                    # We use the current state of the Monad after recovery
+                    adj_matrix = test_monad.graph.edge_weights.detach().cpu()
                     
-                    chart_col1, chart_col2 = st.columns([3, 1])
+                    # 2. Reshape into a square matrix for eigenvalue calculation
+                    # (If sparse/rectangular, we approximate using singular values)
+                    num_edges = adj_matrix.shape[0]
+                    dim = int(np.sqrt(num_edges))
                     
-                    with chart_col1:
-                        st.vega_lite_chart(df_real, {
-                            "mark": {"type": "circle", "size": 100, "tooltip": True},
-                            "encoding": {
-                                "x": {"field": "Agency (X)", "type": "quantitative", "scale": {"domain": [0, 1]}, "title": "Agency (Causal Power)"},
-                                "y": {"field": "Pain (Y)", "type": "quantitative", "scale": {"domain": [0, 1]}, "title": "Subjective Pain"},
-                                "size": {"field": "Entropy (Z)", "type": "quantitative", "legend": None},
-                                "color": {
-                                    "field": "Phase", 
-                                    "type": "nominal", 
-                                    "scale": {"range": ["#7cad8a", "#b8864b", "#cc6666", "#8fb399"]}
-                                },
-                                "order": {"field": "Entropy (Z)"} # Draw order
+                    if dim * dim == num_edges:
+                        # Perfect square, we can do full eigendecomposition
+                        square_weights = adj_matrix.reshape(dim, dim)
+                        eigenvalues = torch.linalg.eigvals(square_weights)
+                        # Spectral Radius = Max absolute eigenvalue
+                        spectral_radius = torch.max(torch.abs(eigenvalues)).item()
+                    else:
+                        # Irregular topology: Use Norm as proxy for spectral density
+                        spectral_radius = torch.norm(adj_matrix).item() / np.sqrt(num_edges)
+                        
+                except Exception as e:
+                    spectral_radius = 0.0 # Fallback
+                    
+                # --- PART 3: VISUALIZATION & METRICS ---
+                
+                chart_col1, chart_col2 = st.columns([3, 1])
+                
+                with chart_col1:
+                    st.vega_lite_chart(df_real, {
+                        "mark": {"type": "circle", "size": 100, "tooltip": True},
+                        "encoding": {
+                            "x": {"field": "Agency (X)", "type": "quantitative", "scale": {"domain": [0, 1]}, "title": "Agency (Causal Power)"},
+                            "y": {"field": "Pain (Y)", "type": "quantitative", "scale": {"domain": [0, 1]}, "title": "Subjective Pain"},
+                            "size": {"field": "Entropy (Z)", "type": "quantitative", "legend": None},
+                            "color": {
+                                "field": "Phase", 
+                                "type": "nominal", 
+                                "scale": {"range": ["#7cad8a", "#b8864b", "#cc6666", "#8fb399"]}
                             },
-                            "title": "Actual Phase Space Trajectory (No Smoothing)"
-                        }, use_container_width=True)
+                            "order": {"field": "Entropy (Z)"} # Draw order
+                        },
+                        "title": "Actual Phase Space Trajectory (No Smoothing)"
+                    }, use_container_width=True)
+                
+                with chart_col2:
+                    # REAL METRICS ONLY
                     
-                    with chart_col2:
-                        # REAL METRICS ONLY
+                    # 1. Delta Phi: How much Agency was gained/lost?
+                    delta_phi = phases_data[-1]["Agency"] - phases_data[0]["Agency"]
+                    
+                    # 2. Antifragility Score: Did we end up better than we started?
+                    antifragility = (phases_data[-1]["Agency"] / (phases_data[0]["Agency"] + 0.0001)) * 100
+                    
+                    st.markdown(f"""
+                    <div style="font-family: 'Courier New'; background: #111; padding: 10px; border: 1px solid #444;">
+                        <div style="color: #888; font-size: 0.7rem;">SPECTRAL RADIUS (ρ)</div>
+                        <div style="color: #fff; font-size: 1.5rem;">{spectral_radius:.5f}</div>
+                        <div style="color: #555; font-size: 0.6rem;">(Real Connectivity Eigenvalue)</div>
                         
-                        # 1. Delta Phi: How much Agency was gained/lost?
-                        delta_phi = phases_data[-1]["Agency"] - phases_data[0]["Agency"]
+                        <div style="height: 15px;"></div>
                         
-                        # 2. Antifragility Score: Did we end up better than we started?
-                        antifragility = (phases_data[-1]["Agency"] / (phases_data[0]["Agency"] + 0.0001)) * 100
+                        <div style="color: #888; font-size: 0.7rem;">ANTIFRAGILITY</div>
+                        <div style="color: {'#7cad8a' if antifragility > 100 else '#b8864b'}; font-size: 1.2rem;">{antifragility:.1f}%</div>
                         
-                        st.markdown(f"""
-                        <div style="font-family: 'Courier New'; background: #111; padding: 10px; border: 1px solid #444;">
-                            <div style="color: #888; font-size: 0.7rem;">SPECTRAL RADIUS (ρ)</div>
-                            <div style="color: #fff; font-size: 1.5rem;">{spectral_radius:.5f}</div>
-                            <div style="color: #555; font-size: 0.6rem;">(Real Connectivity Eigenvalue)</div>
-                            
-                            <div style="height: 15px;"></div>
-                            
-                            <div style="color: #888; font-size: 0.7rem;">ANTIFRAGILITY</div>
-                            <div style="color: {'#7cad8a' if antifragility > 100 else '#b8864b'}; font-size: 1.2rem;">{antifragility:.1f}%</div>
-                            
-                            <div style="height: 15px;"></div>
-                            
-                            <div style="color: #888; font-size: 0.7rem;">NET CAUSAL GAIN</div>
-                            <div style="color: {'#7cad8a' if delta_phi > 0 else '#cc6666'}; font-size: 1.2rem;">{delta_phi:+.4f}</div>
-                        </div>
-                        """, unsafe_allow_html=True)
-
-                    st.markdown("""
-                    <div style="border-left: 2px solid #7cad8a; padding-left: 1rem; margin-top: 1rem;">
-                        <span style="color: #7cad8a; font-family: monospace;">>> RIGOROUS ANALYSIS:</span> 
-                        <span style="color: #aaa; font-style: italic;">
-                            This chart plots the <b>literal</b> coordinates of the Monad's state. 
-                            If the dots form a loop that does not return to the exact same origin (Hysteresis), 
-                            it proves the system has <b>memory of trauma</b>.
-                            The Spectral Radius > 1.0 indicates self-sustaining resonant dynamics (Life).
-                        </span>
+                        <div style="height: 15px;"></div>
+                        
+                        <div style="color: #888; font-size: 0.7rem;">NET CAUSAL GAIN</div>
+                        <div style="color: {'#7cad8a' if delta_phi > 0 else '#cc6666'}; font-size: 1.2rem;">{delta_phi:+.4f}</div>
                     </div>
                     """, unsafe_allow_html=True)
+
+                st.markdown("""
+                <div style="border-left: 2px solid #7cad8a; padding-left: 1rem; margin-top: 1rem;">
+                    <span style="color: #7cad8a; font-family: monospace;">>> RIGOROUS ANALYSIS:</span> 
+                    <span style="color: #aaa; font-style: italic;">
+                        This chart plots the <b>literal</b> coordinates of the Monad's state. 
+                        If the dots form a loop that does not return to the exact same origin (Hysteresis), 
+                        it proves the system has <b>memory of trauma</b>.
+                        The Spectral Radius > 1.0 indicates self-sustaining resonant dynamics (Life).
+                    </span>
+                </div>
+                """, unsafe_allow_html=True)
                 
                 # Success table with styled rows
                 st.markdown("""
