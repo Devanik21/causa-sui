@@ -810,7 +810,7 @@ def fragment_monad_dashboard():
             # Density metric
             if latest_nodes > 0:
                 density = latest_edges / (latest_nodes * (latest_nodes - 1) / 2) if latest_nodes > 1 else 0
-                st.progress(min(density, 1.0), text=f"Network Density: {density:.2%}")
+                st.progress(max(0.0, min(1.0, density)), text=f"Network Density: {density:.2%}")
         
         with graph_tab3:
             # Event log with styled entries
@@ -958,7 +958,7 @@ def fragment_monad_dashboard():
         else:
             st.error(f"**Status**: System is in PAIN (Deficit: {monad.config.pain_threshold - ei_score:.4f})")
         
-        st.progress(min(1.0, ei_score), text=f"Causal Power: {ei_score:.2%}")
+        st.progress(max(0.0, min(1.0, ei_score)), text=f"Causal Power: {ei_score:.2%}")
         
     # === PHASE 2: THE BODY (Topological Computing) ===
     with tab_body:
@@ -1017,7 +1017,7 @@ def fragment_monad_dashboard():
             m2.text_input("🌀 Vector Dimension", value=f"{holo_dim:,}", disabled=True)
             
             usage = num_stored / max_items if max_items > 0 else 0
-            st.progress(usage, text=f"Holographic Saturation: {usage:.1%}")
+            st.progress(max(0.0, min(1.0, usage)), text=f"Holographic Saturation: {usage:.1%}")
             
             # Memory Actions
             st.markdown("**💾 Synthetic Memory Control**")
