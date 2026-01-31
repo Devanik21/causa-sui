@@ -183,44 +183,44 @@ class DivineMonad(nn.Module):
         
     def _vitalize_structure(self):
         """
-        THE GOLDEN PATH: Force-Directed Embryogenesis.
-        We do not rely on random chance. We SURGICALLY implant a logic gate.
-        This guarantees: Input 0 -> Hidden Node -> Output 0
+        THE GOLDEN PATH 3.0: The Transistor Logic.
+        We create a 'Switch' that is OFF by default and ON only with input.
+        This guarantees Differentiation (State 0 vs State 1), which is the definition of Information.
         """
         with torch.no_grad():
-            # 1. QUIET THE STORM (Low Noise Background)
-            # Reduce background noise so the signal can be heard.
-            nn.init.normal_(self.graph.edge_weights, mean=0.0, std=0.01)
+            # 1. CLEAN SLATE
+            # Wipe all features to 0.0 so we don't 'jam' the inputs.
             nn.init.constant_(self.graph.node_features, 0.0)
             
-            # 2. THE DEFIBlRILLATOR (Surgical Path)
-            # We connect Input[0] -> Hidden[Last] -> Output[0] with MASSIVE weights.
+            # 2. WEAK BACKGROUND NOISE
+            # Just enough to prevent 'dead gradients' elsewhere, but too weak to trigger the spine.
+            nn.init.normal_(self.graph.edge_weights, mean=0.0, std=0.05)
             
-            # Identify the nodes
-            in_node_idx = 0  # First input
-            hidden_node_idx = self.config.num_input_nodes # First hidden node
-            out_node_idx = self.graph.get_num_nodes() - 1 # Last node (Output)
+            # 3. CONSTRUCT THE SPINE (Indices)
+            in_idx = 0
+            hidden_idx = self.config.num_input_nodes
+            out_idx = self.graph.get_num_nodes() - 1
             
-            # FORCE: Input -> Hidden (Weight = 10.0)
-            # We bypass the mutator and hack the tensors directly for the spine.
             try:
-                # Check if edge exists, if not, create it using mutator logic manually
-                # For safety, we just add it via mutator which handles indexing
-                self.mutator.add_edge(self.graph, in_node_idx, hidden_node_idx, init_weight=20.0)
+                # 4. THE EXCITATORY CONNECTION (The Wire)
+                # Weights of 5.0 are sufficient to saturate sigmoid/tanh without exploding.
+                # Input -> Hidden
+                self.mutator.add_edge(self.graph, in_idx, hidden_idx, init_weight=5.0)
+                # Hidden -> Output
+                self.mutator.add_edge(self.graph, hidden_idx, out_idx, init_weight=5.0)
                 
-                # FORCE: Hidden -> Output (Weight = 10.0)
-                self.mutator.add_edge(self.graph, hidden_node_idx, out_node_idx, init_weight=20.0)
-                
-                # 3. BIAS THE HIDDEN NODE (The Activation Threshold)
-                # Set bias negative so it acts like a switch (only fires if input is strong)
-                # Note: Assuming node_features has a bias-like component or just rely on weight.
-                # We boost the feature of the input node to ensure it kicks the chain.
-                self.graph.node_features.data[in_node_idx] = 1.0
+                # 5. THE INHIBITORY BIAS (The Spring)
+                # CRITICAL: We set the Hidden Node's internal bias to negative.
+                # This ensures it stays OFF (0) unless it receives a strong Input (1).
+                # Logic:
+                #   Input 0 -> Net: 0 - 2.5 = -2.5 -> Output: Low (0)
+                #   Input 1 -> Net: 5 - 2.5 = +2.5 -> Output: High (1)
+                self.graph.node_features.data[hidden_idx] = -2.5
                 
             except Exception as e:
-                self.action_log.append(f"SPINE_FAIL: {str(e)}")
+                self.action_log.append(f"TRANSISTOR_FAIL: {str(e)}")
 
-            self.action_log.append("STRUCTURE_DEFIBRILLATED")
+            self.action_log.append("STRUCTURE_TRANSISTORIZED")
             
     def _update_topology_metrics(self):
         """Update topology-related metrics in state."""
@@ -563,6 +563,7 @@ if __name__ == "__main__":
     
     print("\n" + "=" * 60)
     print("[PASS] Divine Monad tests completed!")
+
 
 
 
