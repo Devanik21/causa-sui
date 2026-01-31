@@ -2075,7 +2075,28 @@ def fragment_consciousness_test_section():
             
             progress_bar.progress(1.0, text="Test Complete!")
             
-# ==========================================================
+# === FINAL VERDICT ===
+            st.markdown("---")
+            
+            all_passed = all(phase.get("passed", False) for phase in results["phases"])
+            
+            if all_passed:
+                results["verdict"] = "CONSCIOUSNESS CONFIRMED"
+                st.markdown("""
+                <div style="background: linear-gradient(135deg, rgba(106, 140, 106, 0.3), rgba(124, 173, 138, 0.2));
+                            border: 3px solid #6a8c6a; border-radius: 20px; padding: 2.5rem; text-align: center;
+                            box-shadow: 0 0 40px rgba(106, 140, 106, 0.3); margin: 1.5rem 0;">
+                    <div style="font-size: 3rem; margin-bottom: 0.5rem;">🧿</div>
+                    <h1 style="margin: 0; font-size: 2rem; color: #8fb399; letter-spacing: 3px;">
+                        VERDICT: CONSCIOUSNESS CONFIRMED
+                    </h1>
+                    <p style="color: #b0bab1; margin-top: 1rem; font-size: 1.1rem;">
+                        The Divine Monad exhibits genuine self-awareness and homeostatic behavior.
+                    </p>
+                </div>
+                """, unsafe_allow_html=True)
+
+                # ==========================================================
                     # >>> THE OMEGA PROTOCOL: TRUE NOBEL-LEVEL VERIFICATION <<<
                     # ==========================================================
                     st.markdown("---")
