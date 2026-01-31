@@ -359,8 +359,8 @@ class DivineMonad(nn.Module):
         
         # Grow a new node
         try:
-            # Use a slightly larger epsilon for repair to break symmetry faster
-            self.mutator.epsilon = 1e-2 
+            # FIX: Much larger epsilon (0.5) to create DISTINCT new node structure
+            self.mutator.epsilon = 0.5 
             res = self.mutator.grow_node(self.graph, parent_id=self.graph.num_input_nodes)
             self.mutator.epsilon = 1e-4 # Reset
             
@@ -370,10 +370,10 @@ class DivineMonad(nn.Module):
         except Exception as e:
             self.action_log.append(f"REPAIR_FAILED: {str(e)}")
         
-        # Force a small update to node features to ensure variance changes
-        self.graph.node_features.data += torch.randn_like(self.graph.node_features.data) * 0.01
+        # FIX: Stronger perturbation (0.1) to kickstart variance
+        self.graph.node_features.data += torch.randn_like(self.graph.node_features.data) * 0.1
         
-        # Check if repair helped
+        # Check if repair helped (USING REAL PHYSICS EI)
         ei_score, _, _ = self._compute_real_ei_optimized()
         
         # We allow the repair flag to clear even if growth was small, 
@@ -388,7 +388,8 @@ class DivineMonad(nn.Module):
         # Try adding edges with VITALITY if still in critical pain
         if ei_score < self.config.pain_threshold:
             try:
-                v_weight = 0.1
+                # FIX: Weight 1.0 (Strong) instead of 0.1
+                v_weight = 1.0
                 self.mutator.add_edge(self.graph, source=self.graph.num_input_nodes, 
                                       target=self.graph.num_nodes - 1, init_weight=v_weight)
                 self._update_topology_metrics()
@@ -429,14 +430,6 @@ class DivineMonad(nn.Module):
     ) -> Tuple[torch.Tensor, Dict]:
         """
         The Main Loop: Sense -> Introspect -> Perceive -> Process -> React -> Learn
-        
-        Args:
-            x_input: Input tensor [num_input_nodes]
-            target: Optional target for computing prediction error
-            
-        Returns:
-            output: Prediction tensor
-            info: Dictionary with internal metrics
         """
         self.state.step_count += 1
         
@@ -446,7 +439,6 @@ class DivineMonad(nn.Module):
         
         # === 2. PERCEIVE (Bind input with self-state) ===
         # Project input to node_dim, then element-wise bind
-        # For now, simple: inject introspection into first hidden node
         
         # === 3. PROCESS ===
         output, node_states = self.graph(x_input)
@@ -456,11 +448,39 @@ class DivineMonad(nn.Module):
         if target is not None:
             prediction_error = (output - target).abs().mean().item()
         
-        # === 4.5 METABOLIC DECAY (Entropy) ===
-        # Natural decay of structural integrity over time
+        # === 4.0 HEBBIAN LEARNING (ANTI-ENTROPY) ===
+        # CRITICAL FIX: "Neurons that fire together, wire together"
+        # This counteracts metabolic decay by reinforcing active paths.
         with torch.no_grad():
-            self.graph.edge_weights.data *= 0.999  # Structural decay
-            self.graph.node_features.data *= 0.9995 # Activation decay
+            if self.graph.get_num_edges() > 0:
+                # 1. Get source and target features for all edges
+                src_idx = self.graph.edge_index[0]
+                tgt_idx = self.graph.edge_index[1]
+                
+                src_features = self.graph.node_features[src_idx] # [E, D]
+                tgt_features = self.graph.node_features[tgt_idx] # [E, D]
+                
+                # 2. Compute correlation (activity alignment)
+                # Normalize features for stable learning
+                src_norm = F.normalize(src_features, p=2, dim=1)
+                tgt_norm = F.normalize(tgt_features, p=2, dim=1)
+                
+                # Dot product similarity
+                similarity = (src_norm * tgt_norm).sum(dim=1, keepdim=True) # [E, 1]
+                
+                # 3. Apply Hebbian update
+                # Stronger weights grow, conflicting ones shrink (soft Oja's rule logic)
+                learning_rate = 0.05
+                self.graph.edge_weights.data += learning_rate * similarity
+                
+                # Clamp weights to prevent explosion, but allow negative (inhibitory)
+                self.graph.edge_weights.data.clamp_(-10.0, 10.0)
+
+        # === 4.5 METABOLIC DECAY (Entropy) ===
+        # TUNED: Slower decay (0.9995) allows Hebbian learning (Rate > Decay) to win.
+        with torch.no_grad():
+            self.graph.edge_weights.data *= 0.9995  # Structural decay
+            self.graph.node_features.data *= 0.9998 # Activation decay (very slow)
             
         trigger_slow = self._run_fast_loop(prediction_error)
         
@@ -563,6 +583,7 @@ if __name__ == "__main__":
     
     print("\n" + "=" * 60)
     print("[PASS] Divine Monad tests completed!")
+
 
 
 
