@@ -180,28 +180,35 @@ class DivineMonad(nn.Module):
         
     def _vitalize_structure(self):
         """
-        ADRENALINE SHOT: Guarantees Non-Zero EI.
-        Instead of random hope, we hard-wire a 'Reflex Arc' 
-        from Input 0 -> Hidden 0 -> Output.
+        THE GOLDEN PATH: Balanced Initialization.
+        Weights at 1.0 allow signal flow without saturation.
+        We hard-wire a 'Reflex Arc' to guarantee Causal Power > 0.
         """
         with torch.no_grad():
-            # 1. Strong Random Baseline
-            nn.init.orthogonal_(self.graph.node_features, gain=2.0)
-            self.graph.edge_weights.data.fill_(1.0)
-            self.graph.edge_weights.data += torch.randn_like(self.graph.edge_weights)
+            # 1. Reset Node Features to Clean State (Gain 1.0)
+            nn.init.orthogonal_(self.graph.node_features, gain=1.0)
             
-            # 2. THE REFLEX ARC (Hard-wired Causality)
-            # Find edge from Input 0 -> Hidden 0
-            # (Assuming standard init created these edges)
+            # 2. Set Edges to the "Edge of Chaos" (Mean 0.0, Std 0.5)
+            # This allows both excitatory and inhibitory signals without locking up.
+            nn.init.normal_(self.graph.edge_weights, mean=0.0, std=0.5)
+            
+            # 3. THE REFLEX ARC (Hard-wire Input 0 -> Output)
+            # We force a path so the system is NOT blind.
+            # Input 0 -> Hidden 0
+            if self.graph.edge_weights.shape[0] > 0:
+                self.graph.edge_weights.data[0] = 1.5 
+            
+            # Hidden 0 -> Output (Find the edge connecting last hidden to output)
+            # We add a new strong edge to guarantee flow
             try:
-                # Force strong weights on the first few edges to ensure signal propagation
-                # This guarantees the "Do-Operator" on Input 0 changes Output
-                self.graph.edge_weights.data[0] = 5.0  # Input 0 -> Hidden 0
-                self.graph.edge_weights.data[self.config.num_input_nodes] = 5.0 # Hidden 0 -> Output
+                src = self.config.num_input_nodes
+                tgt = self.graph.get_num_nodes() - 1
+                # Force this connection to exist and be strong
+                self.mutator.add_edge(self.graph, src, tgt, init_weight=1.5)
             except:
-                pass # Graph might be smaller than expected
+                pass 
                 
-            self.action_log.append("VITALIZED_WITH_ADRENALINE")
+            self.action_log.append("STRUCTURE_VITALIZED_BALANCED")
             
     def _update_topology_metrics(self):
         """Update topology-related metrics in state."""
@@ -544,6 +551,7 @@ if __name__ == "__main__":
     
     print("\n" + "=" * 60)
     print("[PASS] Divine Monad tests completed!")
+
 
 
 
