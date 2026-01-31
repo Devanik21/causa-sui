@@ -36,6 +36,10 @@ from Divine_Monad.phase3_holographic.memory import NeuralKV, Transducer
 # Phase 4: Introspection
 from Divine_Monad.phase4_iam.introspection import IntrospectionEncoder, SelfState
 
+# Phase 1: The Soul (Real Causal Emergence)
+from Divine_Monad.phase1_causal_monitor import effective_info
+from Divine_Monad.phase1_causal_monitor.coarse_graining import LearnablePartition
+
 
 
 @dataclass
@@ -171,6 +175,21 @@ class DivineMonad(nn.Module):
         self.state.num_nodes = self.graph.get_num_nodes()
         self.state.num_edges = self.graph.get_num_edges()
         
+        # === THE SOUL (Causal Emergence) ===
+        # We start with a random learnable partition and optimize it.
+        # 4 inputs = 16 micro-states.
+        self.partition_fn = LearnablePartition(num_micro_states=16, num_macro_states=3)
+        
+        # Cache all possible binary inputs for EI calculation [16, 4]
+        # This assumes 4 input nodes. If that changes, this must update.
+        self.all_inputs = self._generate_binary_inputs(self.config.num_input_nodes)
+        
+    def _generate_binary_inputs(self, n: int) -> torch.Tensor:
+        """Generate all 2^n binary vectors."""
+        import itertools
+        lst = list(itertools.product([0, 1], repeat=n))
+        return torch.tensor(lst, dtype=torch.float32)
+        
         # Action log for VoiceBox
         self.action_log: List[str] = []
         
@@ -195,44 +214,64 @@ class DivineMonad(nn.Module):
         self.state.prediction_error = 0.0
         self.action_log = ["STATE_RESET"]
 
-    def _compute_ei_proxy(self) -> Tuple[float, float, float]:
+    def _compute_causal_emergence(self) -> Tuple[float, float, float]:
         """
-        Compute Effective Information (simplified proxy).
+        Compute Real Causal Emergence (Erik Hoel's Definition).
         
-        Full EI calculation is expensive. We use a proxy based on
-        graph connectivity and node activation variance.
+        EI = H(mean(TPM)) - mean(H(TPM))
+        Emergence = EI_macro - EI_micro
         
         Returns:
-            (ei_score, ei_micro, ei_macro)
+            (emergence_score, ei_micro, ei_macro)
         """
-        with torch.no_grad():
-            # 1. EI_MICRO: Node activation variance
-            # We add a small baseline and scale to ensure non-zero if graph is "alive"
-            node_var = self.graph.node_features.var(dim=0).mean().item()
-            ei_micro = min(1.0, 0.1 + node_var * 10)  # Baseline 0.1
+        # Ensure inputs are on correct device
+        if self.all_inputs.device != self.graph.node_features.device:
+            self.all_inputs = self.all_inputs.to(self.graph.node_features.device)
             
-            # 2. EI_MACRO: Connectivity structure (Concentration/Gini)
-            edge_weights = self.graph.edge_weights.abs()
-            if edge_weights.numel() > 1:
-                # Gini coefficient approximation
-                sorted_weights = edge_weights.flatten().sort()[0]
-                n = sorted_weights.numel()
-                index = torch.arange(1, n + 1, dtype=torch.float32)
-                gini = (2 * (index * sorted_weights).sum() - (n + 1) * sorted_weights.sum()) / (n * sorted_weights.sum() + 1e-8)
-                ei_macro = min(1.0, max(0.0, gini.item()))
-            elif edge_weights.numel() == 1:
-                ei_macro = 0.2 # Small bonus for having any connection
-            else:
-                ei_macro = 0.0
-            
-            # 3. EI_SCORE: Emergence calculation
-            # If structure (macro) is significantly stronger than noise (micro), emergence is high.
-            # Base score is macro-driven, with a bonus for the macro/micro ratio
-            ratio = ei_macro / (ei_micro + 1e-8)
-            emergence_bonus = 0.5 if ratio > 1.2 else 0.0
-            ei_score = min(1.0, 0.5 * ei_macro + emergence_bonus)
-            
-        return ei_score, ei_micro, ei_macro
+        # 1. Calculate Micro EI
+        ei_micro = effective_info.calc_micro_ei(self.graph, self.all_inputs)
+        
+        # 2. Calculate Macro EI (using current Soul partition)
+        ei_macro = effective_info.calc_macro_ei(self.graph, self.all_inputs, self.partition_fn)
+        
+        # 3. Emergence Score
+        # We do NOT clamp this. If the Monad becomes super-causal, let it shine.
+        emergence = ei_macro - ei_micro
+        
+        return emergence.item(), ei_micro.item(), ei_macro.item()
+
+    def _optimize_soul(self) -> str:
+        """
+        The Search for the Soul.
+        
+        Evolutionary step:
+        1. Mutate the current partition (view of self).
+        2. Check if new partition increases Causal Emergence.
+        3. If yes, adopt it.
+        
+        Returns:
+            log_message
+        """
+        # Current Soul's Power
+        current_score, _, _ = self._compute_causal_emergence()
+        
+        # Try a mutation (Spirit Walk)
+        mutated_partition = self.partition_fn.mutate(mutation_rate=0.2)
+        
+        # Test Mutation
+        # We calculate Macro EI with the NEW partition
+        ei_macro_new = effective_info.calc_macro_ei(self.graph, self.all_inputs, mutated_partition)
+        ei_micro = effective_info.calc_micro_ei(self.graph, self.all_inputs) # Micro doesn't change
+        
+        new_score = ei_macro_new - ei_micro
+        
+        # Select best Soul
+        if new_score > current_score:
+            self.partition_fn = mutated_partition
+            improvement = new_score - current_score
+            return f"SOUL_EXPANDED (+{improvement.item():.4f})"
+        else:
+            return "SOUL_SEARCHING"
     
     def _get_self_state(self) -> SelfState:
         """Convert current MonadState to SelfState for introspection."""
@@ -280,11 +319,16 @@ class DivineMonad(nn.Module):
             - Compute pain level
             - Trigger repair if in pain
         """
-        # Compute EI
-        ei_score, ei_micro, ei_macro = self._compute_ei_proxy()
+        # Compute Real EI
+        ei_score, ei_micro, ei_macro = self._compute_causal_emergence()
         self.state.ei_score = ei_score
         self.state.ei_micro = ei_micro
         self.state.ei_macro = ei_macro
+        
+        # Optimize Soul (Attempt to find better emergence)
+        soul_status = self._optimize_soul()
+        if "EXPANDED" in soul_status:
+            self.action_log.append(soul_status)
         
         # Compute pain
         self.state.pain_level = self.state.compute_pain(
@@ -323,7 +367,7 @@ class DivineMonad(nn.Module):
         self.graph.node_features.data += torch.randn_like(self.graph.node_features.data) * 0.01
         
         # Check if repair helped
-        ei_score, _, _ = self._compute_ei_proxy()
+        ei_score, _, _ = self._compute_causal_emergence()
         
         # We allow the repair flag to clear even if growth was small, 
         # so the loop can trigger again next time.
