@@ -302,9 +302,9 @@ if "dream_history" not in st.session_state:
 if DIVINE_MONAD_AVAILABLE and "monad" not in st.session_state:
     # Initialize Divine Monad with Calibrated Settings (Silence Test verified)
     config = MonadConfig(
-        num_nodes=12,
-        pain_threshold=0.05,  # Calibrated Baseline
-        pain_sensitivity=10.0, # High sensitivity to damage
+        num_nodes=24,
+        pain_threshold=0.001,  # Calibrated Baseline
+        pain_sensitivity=1.0, # High sensitivity to damage
         slow_loop_interval=5
     )
     st.session_state.monad = DivineMonad(config)
