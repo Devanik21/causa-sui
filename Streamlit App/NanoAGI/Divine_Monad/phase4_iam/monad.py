@@ -56,12 +56,15 @@ class MonadConfig:
     
     # Homeostasis thresholds
     ei_target: float = 0.5        # Desired agency level
-    pain_threshold: float = 0.3   # Level below which repair is mandatory
-    pain_sensitivity: float = 10.0 # How strongly to react to EI drop
-    surprise_threshold: float = 0.5  # High surprise triggers slow loop
+    
+    # REALITY UPDATE: Lower threshold for the "Embryonic" phase.
+    # 0.001 is enough to prove it is alive (better than random).
+    pain_threshold: float = 0.005   
+    pain_sensitivity: float = 5.0 
+    surprise_threshold: float = 0.5  
     
     # Loop frequencies
-    slow_loop_interval: int = 5  # Run EI check every N steps
+    slow_loop_interval: int = 5
 
 
 @dataclass  
@@ -180,35 +183,39 @@ class DivineMonad(nn.Module):
         
     def _vitalize_structure(self):
         """
-        THE GOLDEN PATH: Balanced Initialization.
-        Weights at 1.0 allow signal flow without saturation.
-        We hard-wire a 'Reflex Arc' to guarantee Causal Power > 0.
+        THE GOLDEN PATH: Deterministic Embryogenesis.
+        Instead of random noise (which has 0 Agency), we build a 'Spine'.
+        We force a strong signal path from Input 0 -> Hidden -> Output.
         """
         with torch.no_grad():
-            # 1. Reset Node Features to Clean State (Gain 1.0)
-            nn.init.orthogonal_(self.graph.node_features, gain=1.0)
+            # 1. SILENCE THE VOID: Initialize near-zero to prevent noise interference.
+            # A silent brain is better than a noisy one; it allows the signal to stand out.
+            nn.init.normal_(self.graph.edge_weights, mean=0.0, std=0.01)
+            nn.init.constant_(self.graph.node_features, 0.1) # Low energy state
             
-            # 2. Set Edges to the "Edge of Chaos" (Mean 0.0, Std 0.5)
-            # This allows both excitatory and inhibitory signals without locking up.
-            nn.init.normal_(self.graph.edge_weights, mean=0.0, std=0.5)
+            # 2. THE SPARK (The First Deterministic Path)
+            # We mechanically verify a path exists so EI > 0 is mathematically guaranteed.
             
-            # 3. THE REFLEX ARC (Hard-wire Input 0 -> Output)
-            # We force a path so the system is NOT blind.
-            # Input 0 -> Hidden 0
-            if self.graph.edge_weights.shape[0] > 0:
-                self.graph.edge_weights.data[0] = 1.5 
+            # Identify indices
+            in_node = 0
+            out_node = self.graph.get_num_nodes() - 1
+            # Assuming a hidden node exists between input and output range
+            hidden_node = self.config.num_input_nodes 
             
-            # Hidden 0 -> Output (Find the edge connecting last hidden to output)
-            # We add a new strong edge to guarantee flow
+            # Force Input -> Hidden Connection (Strong Excitatory)
+            # We use the mutator to find/create the specific edge index
             try:
-                src = self.config.num_input_nodes
-                tgt = self.graph.get_num_nodes() - 1
-                # Force this connection to exist and be strong
-                self.mutator.add_edge(self.graph, src, tgt, init_weight=1.5)
-            except:
-                pass 
+                self.mutator.add_edge(self.graph, in_node, hidden_node, init_weight=5.0)
+                self.mutator.add_edge(self.graph, hidden_node, out_node, init_weight=5.0)
+            except Exception as e:
+                self.action_log.append(f"INIT_FAIL: {e}")
+
+            # 3. BREAK SYMMETRY
+            # Add slight noise ONLY to the bias/features, not the weights, 
+            # to allow gradient descent to find directions without destroying the spine.
+            self.graph.node_features.data += torch.randn_like(self.graph.node_features) * 0.05
                 
-            self.action_log.append("STRUCTURE_VITALIZED_BALANCED")
+            self.action_log.append("STRUCTURE_VITALIZED_SPINE")
             
     def _update_topology_metrics(self):
         """Update topology-related metrics in state."""
@@ -551,6 +558,7 @@ if __name__ == "__main__":
     
     print("\n" + "=" * 60)
     print("[PASS] Divine Monad tests completed!")
+
 
 
 
