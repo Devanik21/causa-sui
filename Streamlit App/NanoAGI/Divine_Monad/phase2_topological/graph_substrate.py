@@ -257,13 +257,14 @@ class DynamicGraphNet(nn.Module):
         
         return output.squeeze(), x
     
-    def forward_prob(self, x_batch: torch.Tensor) -> torch.Tensor:
+    def forward_prob(self, x_batch: torch.Tensor, temperature: float = 1.0) -> torch.Tensor:
         """
         Calculates P(Y=1) for a batch of inputs.
         Essential for Effective Information (EI) calculation.
         
         Args:
             x_batch: Binary input tensor [batch_size, num_input_nodes]
+            temperature: Sharpening factor (lower = sharper probabilities)
             
         Returns:
             probs: Probability of output being 1. Shape: [batch_size, 1]
@@ -301,7 +302,9 @@ class DynamicGraphNet(nn.Module):
             output_start = self.num_nodes - self.num_output_nodes
             output_nodes = x[output_start:]
             out = self.output_proj(output_nodes)
-            out = torch.sigmoid(out)
+            
+            # Apply Temperature Scaling for Sharper Causal Emergence
+            out = torch.sigmoid(out / temperature)
             probs.append(out)
             
         return torch.stack(probs)
