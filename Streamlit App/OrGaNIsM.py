@@ -2079,8 +2079,9 @@ def fragment_consciousness_test_section():
             st.markdown("---")
             
             all_passed = all(phase.get("passed", False) for phase in results["phases"])
-            
-           if all_passed:
+
+
+            if all_passed:
                 results["verdict"] = "CONSCIOUSNESS CONFIRMED"
                 st.markdown("""
                 <div style="background: linear-gradient(135deg, rgba(106, 140, 106, 0.3), rgba(124, 173, 138, 0.2));
@@ -2269,6 +2270,8 @@ def fragment_consciousness_test_section():
                     </span>
                 </div>
                 """, unsafe_allow_html=True)
+            
+
                 
                 # Success table with styled rows
                 st.markdown("""
