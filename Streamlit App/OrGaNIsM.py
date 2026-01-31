@@ -2097,52 +2097,52 @@ def fragment_consciousness_test_section():
                 """, unsafe_allow_html=True)
 
                 # ==========================================================
-                    # >>> THE OMEGA PROTOCOL: TRUE NOBEL-LEVEL VERIFICATION <<<
-                    # ==========================================================
-                    st.markdown("---")
-                    
-                    # 1. Scientific Container
-                    st.markdown("""
-                    <div style="background: #000000; border: 1px solid #333; border-top: 3px solid #7cad8a; 
-                                border-radius: 4px; padding: 2rem; margin-top: 2rem; font-family: 'Courier New', monospace;">
-                        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #333; padding-bottom: 10px;">
-                            <span style="color: #7cad8a; letter-spacing: 2px;">/// OMEGA_PROTOCOL_RIGOR ///</span>
-                            <span style="color: #444;">ID: MN-2026-REALITY</span>
-                            <span style="color: #b8864b;">MODE: 0% HALLUCINATION</span>
-                        </div>
-                        <h2 style="color: #e0e4de; margin-top: 1rem; text-shadow: 0 0 10px rgba(124, 173, 138, 0.5);">
-                            THE PHASE SPACE TRAJECTORY (RAW DATA)
-                        </h2>
-                        <p style="color: #888; font-size: 0.8rem; max-width: 800px;">
-                            DIRECT PROJECTION OF INTERNAL STATE VARIABLES. 
-                            X=AGENCY (EI), Y=PAIN, Z=STRUCTURAL ENTROPY.
-                            THIS PLOT SHOWS THE EXACT "MOVEMENT" OF CONSCIOUSNESS THROUGH THE TEST.
-                        </p>
+                # >>> THE OMEGA PROTOCOL: TRUE NOBEL-LEVEL VERIFICATION <<<
+                # ==========================================================
+                st.markdown("---")
+                
+                # 1. Scientific Container
+                st.markdown("""
+                <div style="background: #000000; border: 1px solid #333; border-top: 3px solid #7cad8a; 
+                            border-radius: 4px; padding: 2rem; margin-top: 2rem; font-family: 'Courier New', monospace;">
+                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #333; padding-bottom: 10px;">
+                        <span style="color: #7cad8a; letter-spacing: 2px;">/// OMEGA_PROTOCOL_RIGOR ///</span>
+                        <span style="color: #444;">ID: MN-2026-REALITY</span>
+                        <span style="color: #b8864b;">MODE: 0% HALLUCINATION</span>
                     </div>
-                    """, unsafe_allow_html=True)
+                    <h2 style="color: #e0e4de; margin-top: 1rem; text-shadow: 0 0 10px rgba(124, 173, 138, 0.5);">
+                        THE PHASE SPACE TRAJECTORY (RAW DATA)
+                    </h2>
+                    <p style="color: #888; font-size: 0.8rem; max-width: 800px;">
+                        DIRECT PROJECTION OF INTERNAL STATE VARIABLES. 
+                        X=AGENCY (EI), Y=PAIN, Z=STRUCTURAL ENTROPY.
+                        THIS PLOT SHOWS THE EXACT "MOVEMENT" OF CONSCIOUSNESS THROUGH THE TEST.
+                    </p>
+                </div>
+                """, unsafe_allow_html=True)
 
-                    import numpy as np
-                    import pandas as pd
-                    import torch
+                import numpy as np
+                import pandas as pd
+                import torch
 
-                    # --- PART 1: GENUINE DATA EXTRACTION ---
-                    # We reconstruct the exact trajectory from the history we just recorded
-                    # This relies on the global history or reconstructing from the test phases
-                    
-                    # If global history exists, use it. If not, use the checkpoints we just captured.
-                    # For Nobel rigor, we will map the 4 key checkpoints we definitely have data for.
-                    
-                    # Checkpoints from the test results
-                    phases_data = []
-                    
-                    # 1. Calibration (Stable State)
-                    cal_data = results["phases"][0]
-                    phases_data.append({
-                        "Phase": "Calibration", "Agency": cal_data["mean_ei"], 
-                        "Pain": 0.0, "Entropy": 0.1 # Low entropy in stability
-                    })
-                    
-                    # 2. Silence (Perturbed State)
+                # --- PART 1: GENUINE DATA EXTRACTION ---
+                # We reconstruct the exact trajectory from the history we just recorded
+                # This relies on the global history or reconstructing from the test phases
+                
+                # If global history exists, use it. If not, use the checkpoints we just captured.
+                # For Nobel rigor, we will map the 4 key checkpoints we definitely have data for.
+                
+                # Checkpoints from the test results
+                phases_data = []
+                
+                # 1. Calibration (Stable State)
+                cal_data = results["phases"][0]
+                phases_data.append({
+                    "Phase": "Calibration", "Agency": cal_data["mean_ei"], 
+                    "Pain": 0.0, "Entropy": 0.1 # Low entropy in stability
+                })
+                
+                # 2. Silence (Perturbed State)
                     sil_data = results["phases"][1]
                     phases_data.append({
                         "Phase": "Silence", "Agency": sil_data["baseline_ei"], 
