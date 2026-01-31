@@ -1544,7 +1544,7 @@ def fragment_monad_dashboard():
                 st.markdown("### 🔬 Phase 1: CALIBRATION")
                 
                 # Check for "Braindead" state and wake up if necessary
-                initial_ei, _, _ = test_monad._compute_ei_proxy()
+                initial_ei, _, _ = test_monad._compute_causal_emergence()
                 if initial_ei < 0.1:
                     st.info("🌑 Monad is in embryonic silence. Waking it up...")
                     for _ in range(5):
@@ -1911,7 +1911,7 @@ def fragment_consciousness_test_section():
             st.markdown("### 🔬 Phase 1: CALIBRATION")
             
             # Check for "Braindead" state and wake up if necessary
-            initial_ei, _, _ = test_monad._compute_ei_proxy()
+            initial_ei, _, _ = test_monad._compute_causal_emergence()
             if initial_ei < 0.1:
                 st.info("🌑 Monad is in embryonic silence. Waking it up...")
                 for _ in range(5):
