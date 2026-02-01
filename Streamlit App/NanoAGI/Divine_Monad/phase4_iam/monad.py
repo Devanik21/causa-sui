@@ -408,8 +408,11 @@ class DivineMonad(nn.Module):
         # FIX: Stronger perturbation (0.1) to kickstart variance
         self.graph.node_features.data += torch.randn_like(self.graph.node_features.data) * 0.1
         
-        # Check if repair helped (USING REAL PHYSICS EI)
-        ei_score, _, _ = self._compute_ei_proxy()
+        # --- FATAL BUG FIX HERE ---
+        # OLD: ei_score, _, _ = self._compute_ei_proxy()  <-- This would crash
+        # NEW: Use the True EI function you just built
+        ei_score, _, _ = self._compute_true_ei()
+        # --------------------------
         
         # We allow the repair flag to clear even if growth was small, 
         # so the loop can trigger again next time.
@@ -618,6 +621,7 @@ if __name__ == "__main__":
     
     print("\n" + "=" * 60)
     print("[PASS] Divine Monad tests completed!")
+
 
 
 
