@@ -330,11 +330,21 @@ class DivineMonad(nn.Module):
     
     def _run_slow_loop(self):
         """
-        The Stroboscopic Soul: Optimizes for True Agency.
+        The Stroboscopic Soul: Optimizes for True Agency AND Physical Evolution.
         """
-        # 1. Enable Gradients for this step
+        # --- 1. THE BIOLOGICAL CLOCK (ADD THIS) ---
+        # This makes the graph "breathe" and change shape every heartbeat.
+        # intensity=1.0 allows balanced growth and pruning.
+        try:
+             self.mutator.hebbian_evolve(self.graph, intensity=1.0)
+             self._update_topology_metrics() # Update node/edge counts in state
+        except Exception as e:
+             self.action_log.append(f"EVO_FAIL: {e}")
+
+        # 2. Enable Gradients for this step
         torch.set_grad_enabled(True)
         self.graph.edge_weights.requires_grad_(True)
+        
         
         # 2. Compute TRUE EI
         ei_score, ei_micro, ei_macro = self._compute_true_ei()
@@ -615,6 +625,7 @@ if __name__ == "__main__":
     
     print("\n" + "=" * 60)
     print("[PASS] Divine Monad tests completed!")
+
 
 
 
