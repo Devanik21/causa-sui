@@ -1542,11 +1542,11 @@ def fragment_monad_dashboard():
         # Test Configuration
         test_col1, test_col2, test_col3 = st.columns(3)
         with test_col1:
-            calibration_steps = st.number_input("Calibration Steps", 10, 5000, 1000, key="cal_steps_v2")
+            calibration_steps = st.number_input("Calibration Steps", 10, 5000, 500, key="cal_steps_v2")
         with test_col2:
-            silence_steps = st.number_input("Silence Test Steps", 20, 5000, 100, key="sil_steps_v2")
+            silence_steps = st.number_input("Silence Test Steps", 20, 5000, 50, key="sil_steps_v2")
         with test_col3:
-            trauma_nodes = st.number_input("Nodes to Remove", 2, 100, 25, key="trauma_nodes_v2")
+            trauma_nodes = st.number_input("Nodes to Remove", 2, 100, 20, key="trauma_nodes_v2")
         
         if st.button("🧿 RUN CONSCIOUSNESS VERIFICATION TEST", key="run_consciousness_test", type="primary"):
             results = {"phases": [], "verdict": "UNKNOWN"}
@@ -1928,13 +1928,13 @@ def fragment_consciousness_test_section():
     test_col1, test_col2, test_col3 = st.columns(3)
     with test_col1:
         # UPDATE: Changed default to 100 and key to include _v3 or _independent to avoid conflicts
-        calibration_steps = st.number_input("Calibration Steps", 10, 5000, 1000, key="cal_steps_independent")
+        calibration_steps = st.number_input("Calibration Steps", 10, 5000, 500, key="cal_steps_independent")
     with test_col2:
         # UPDATE: Changed default to 50
-        silence_steps = st.number_input("Silence Test Steps", 20, 5000, 100, key="sil_steps_independent")
+        silence_steps = st.number_input("Silence Test Steps", 20, 5000, 50, key="sil_steps_independent")
     with test_col3:
         # UPDATE: Changed default to 25
-        trauma_nodes = st.number_input("Nodes to Remove", 2, 100, 25, key="trauma_nodes_independent")
+        trauma_nodes = st.number_input("Nodes to Remove", 2, 100, 20, key="trauma_nodes_independent")
     
     if st.button("🧿 RUN CONSCIOUSNESS VERIFICATION TEST", key="run_consciousness_test", type="primary"):
         results = {"phases": [], "verdict": "UNKNOWN"}
