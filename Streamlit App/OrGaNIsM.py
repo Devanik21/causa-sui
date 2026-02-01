@@ -1,60 +1,27 @@
 import os
 import sys
-
-# --- CRITICAL: Add root to path BEFORE any other imports ---
-# Handle various directory structures (Local / NanoAGI / Streamlit Cloud)
-base_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.dirname(base_dir)
-grandparent_dir = os.path.dirname(parent_dir)
-
-# Potential locations for Divine_Monad and core modules
-search_paths = [
-    base_dir,
-    parent_dir,
-    os.path.join(base_dir, "NanoAGI"),
-    os.path.join(parent_dir, "NanoAGI"),
-    os.path.join(grandparent_dir, "Streamlit App", "NanoAGI")
-]
-
-for path in search_paths:
-    if os.path.isdir(path) and path not in sys.path:
-        # Check if this path contains our key folders
-        if os.path.exists(os.path.join(path, "Divine_Monad")) or os.path.exists(os.path.join(path, "core.py")):
-            sys.path.insert(0, path)
-
-
 import streamlit as st
 import torch
 import time
 import datetime
 import io
 
-# Optional imports for RSS feed functionality (graceful degradation)
-try:
-    import requests
-    import xml.etree.ElementTree as ET
-    RSS_AVAILABLE = True
-except ImportError:
-    RSS_AVAILABLE = False
-
-
-import os
-import sys
-
 # ============================================================
 # 🧬 PATH SETUP (CRITICAL: MUST RUN FIRST)
 # ============================================================
-# We define the environment first so imports can be found.
+# Define the environment so imports can be found regardless of 
+# whether running locally, in Streamlit Cloud, or deep in subfolders.
 base_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(base_dir)
 grandparent_dir = os.path.dirname(parent_dir)
 
 # Define where your custom modules live (The NanoAGI folder)
+# Based on your structure: Streamlit App/NanoAGI/
 nano_agi_paths = [
-    os.path.join(base_dir, "NanoAGI"),
-    os.path.join(parent_dir, "NanoAGI"),
-    os.path.join(grandparent_dir, "Streamlit App", "NanoAGI"),
-    base_dir, # Fallback for local dev
+    os.path.join(base_dir, "NanoAGI"),                     # If OrGaNIsM.py is in Streamlit App/
+    os.path.join(parent_dir, "NanoAGI"),                   # If OrGaNIsM.py is deeper
+    os.path.join(grandparent_dir, "Streamlit App", "NanoAGI"), # Fallback
+    base_dir,                                              # Fallback for local dev
     parent_dir 
 ]
 
@@ -82,18 +49,36 @@ CUSTOM_MODULES = [
 if "streamlit" in sys.modules:
     # Create a list of keys to delete (avoid modifying dict while iterating)
     keys_to_purge = []
-    for key in list(sys.modules.keys()):
+    # Snapshot keys to avoid RuntimeError: dictionary changed size during iteration
+    current_modules = list(sys.modules.keys())
+    
+    for key in current_modules:
         # Check if the module starts with any of our custom names
         for target in CUSTOM_MODULES:
             if key == target or key.startswith(target + "."):
                 keys_to_purge.append(key)
                 break
 
-    # Execute Order 66 (Delete them)
+    # Execute Order 66 (Delete them safely)
     for key in keys_to_purge:
-        del sys.modules[key]
+        try:
+            if key in sys.modules:
+                del sys.modules[key]
+        except KeyError:
+            # This ignores the specific error appearing in your logs
+            pass 
 
+# ============================================================
+# 📦 IMPORTS (AFTER PATH FIXES)
+# ============================================================
 
+# Optional imports for RSS feed functionality (graceful degradation)
+try:
+    import requests
+    import xml.etree.ElementTree as ET
+    RSS_AVAILABLE = True
+except ImportError:
+    RSS_AVAILABLE = False
 
 # --- PAGE CONFIG (Must be first Streamlit command for Streamlit UI) ---
 st.set_page_config(
@@ -104,9 +89,14 @@ st.set_page_config(
 )
 
 # --- IMPORTS FROM OUR ORGANISM ---
-from core import PlasticCortex
-from plasticity_network import PlasticityNetwork
-from meta_learner import MetaLearner
+try:
+    from core import PlasticCortex
+    from plasticity_network import PlasticityNetwork
+    from meta_learner import MetaLearner
+except ImportError as e:
+    st.error(f"❌ Core Module Import Failed: {e}")
+    st.info(f"Searching in: {sys.path}")
+    st.stop()
 
 # --- DIVINE MONAD IMPORTS (ALL 4 PHASES) ---
 try:
@@ -136,7 +126,9 @@ try:
     
     DIVINE_MONAD_AVAILABLE = True
 except ImportError as e:
+    # Graceful fallback if Monad files are missing/moved
     DIVINE_MONAD_AVAILABLE = False
+    # Uncomment to debug: st.warning(f"Divine Monad not loaded: {e}")
 
 # --- CUSTOM CSS FOR A PREMIUM DARK THEME ---
 st.markdown("""
