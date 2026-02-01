@@ -2302,8 +2302,8 @@ def fragment_consciousness_test_section():
                 lz_complexity = lempel_ziv_complexity(ei_binary) / len(ei_binary) if len(ei_binary) > 0 else 0.0
                 
                 # 8. Recovery Hysteresis (Non-reversibility metric)
-                lobotomy_idx = next((i for i, p in enumerate(results["phases"]) if p["phase"] == "Lobotomy"), None)
-                recovery_idx = next((i for i, p in enumerate(results["phases"]) if p["phase"] == "Recovery"), None)
+                lobotomy_idx = next((i for i, p in enumerate(results["phases"]) if p.get("name") == "LOBOTOMY"), None)
+                recovery_idx = next((i for i, p in enumerate(results["phases"]) if p.get("name") == "RECOVERY"), None)
                 
                 if lobotomy_idx is not None and recovery_idx is not None:
                     lobotomy_drop = results["phases"][lobotomy_idx]["initial_ei"] - results["phases"][lobotomy_idx]["final_ei"]
