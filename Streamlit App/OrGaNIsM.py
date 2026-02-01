@@ -14,20 +14,29 @@ nano_agi_dir = os.path.join(base_dir, "NanoAGI")          # .../Streamlit App/Na
 if base_dir in sys.path: sys.path.remove(base_dir)
 sys.path.insert(0, base_dir)
 
-# 3. PRIORITY TWO: NanoAGI (For Divine_Monad only)
+# 3. PRIORITY TWO: NanoAGI (So we can find Divine_Monad)
 if nano_agi_dir in sys.path: sys.path.remove(nano_agi_dir)
 sys.path.insert(1, nano_agi_dir)
 
 # 4. THE NUCLEAR EXORCIST ☢️
 # Removes user modules from cache to force a fresh reload on every run.
 if "streamlit" in sys.modules:
-    # We use .pop() to avoid KeyErrors if the module is already gone
-    # We target specifically the conflicting modules and the Monad
-    targets = ["Divine_Monad", "core", "plasticity_network", "meta_learner", "NanoAGI"]
+    # Target every custom module in your specific repo structure
+    targets = [
+        "Divine_Monad", 
+        "core", 
+        "plasticity_network", 
+        "meta_learner", 
+        "NanoAGI",
+        "voicebox",
+        "introspection",
+        "monad"
+    ]
     
     # Snapshot keys to avoid runtime modification errors
     for key in list(sys.modules.keys()):
         for t in targets:
+            # Delete if it matches exact name OR is a submodule (e.g., 'core' or 'Divine_Monad.phase1')
             if key == t or key.startswith(t + "."):
                 sys.modules.pop(key, None)
                 break
@@ -49,26 +58,23 @@ try:
 except ImportError:
     RSS_AVAILABLE = False
 
-
-
-
-
 # --- PAGE CONFIG (Must be first Streamlit command for Streamlit UI) ---
 st.set_page_config(
-    page_title="Hebbian Organism",
-    page_icon="🧬",
+    page_title="🧬 Nano-Daemon: Hebbian Organism",
+    page_icon="🧠",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# --- IMPORTS FROM OUR ORGANISM ---
+# --- IMPORTS FROM OUR ORGANISM (Streamlit App level) ---
+# Because we set base_dir as Priority 1, these will strictly load from 'Streamlit App/'
 from core import PlasticCortex
 from plasticity_network import PlasticityNetwork
 from meta_learner import MetaLearner
 
 # --- DIVINE MONAD IMPORTS (ALL 4 PHASES) ---
 try:
-    # Phase 1: Causal Monitor (Soul - Agency Measurement)
+    # Phase 1: Causal Monitor
     from Divine_Monad.phase1_causal_monitor import (
         MicroCausalNet, create_xor_net,
         binary_entropy, calc_micro_ei, calc_macro_ei, calc_emergence_score,
@@ -76,24 +82,25 @@ try:
         TrainingConfig, train_emergence
     )
     
-    # Phase 2: Topological Computing (Body - Dynamic Graph)
+    # Phase 2: Topological Computing
     from Divine_Monad.phase2_topological import (
         DynamicGraphNet, TopologicalMutator, MutationResult,
         HybridOptimizer, HybridConfig
     )
     
-    # Phase 3: Holographic Memory (Mind - Distributed Storage)
+    # Phase 3: Holographic Memory
     from Divine_Monad.phase3_holographic import (
         Hypervector, Codebook, Transducer, NeuralKV
     )
     
-    # Phase 4: I Am (Self-Awareness & Consciousness)
+    # Phase 4: Conscious (I Am)
     from Divine_Monad.phase4_iam.monad import DivineMonad, MonadConfig, MonadState
     from Divine_Monad.phase4_iam.voicebox import VoiceBox, VoiceThresholds
     from Divine_Monad.phase4_iam.introspection import FourierEncoder, IntrospectionEncoder, SelfState
-    
+
     DIVINE_MONAD_AVAILABLE = True
 except ImportError as e:
+    print(f"⚠️ Divine Monad Import Error: {e}")
     DIVINE_MONAD_AVAILABLE = False
 
 # --- CUSTOM CSS FOR A PREMIUM DARK THEME ---
