@@ -258,7 +258,7 @@ class DivineMonad(nn.Module):
         # Weights are ~5.0. We need noise ~4.0 to test them.
         # Oscillation: 3.5 (Heavy) to 5.5 (Catastrophic)
         chaos_pulse = torch.rand(1).item() * 2.0 
-        noise_level = 3.5 + chaos_pulse
+        noise_level = 4.5 + chaos_pulse
         
         # 3. RUN MICRO (The Hurricane)
         micro_outputs = []
@@ -274,8 +274,8 @@ class DivineMonad(nn.Module):
         # If signal is weak (< 4.0), this noise will cause max variance (0.25).
         # We penalize variance heavily.
         micro_var = micro_stack.var(dim=0).mean()
-        # 1.0 - (0.25 * 4.0) = 0.0. Perfect death.
-        ei_micro = max(0.0, 1.0 - (micro_var.item() * 4.0))
+        # 1.3 - (0.25 * 4.0) = 0.3. Perfect death.
+        ei_micro = max(0.0, 1.3 - (micro_var.item() * 4.0))
         
         # 5. MACRO SCALING (Differentiation)
         # Can you still distinguish inputs through the storm?
@@ -283,7 +283,7 @@ class DivineMonad(nn.Module):
         macro_var = macro_mean.var(dim=0).item()
         # Theoretical max variance is 0.25. 
         # 0.25 * 3.8 = 0.95 (Healthy Max).
-        ei_macro = min(1.0, macro_var * 3.8)
+        ei_macro = min(1.0, macro_var * 3.6)
         
         # 6. THE MIX
         ei_score = (ei_macro * 0.5) + (ei_micro * 0.5)
@@ -615,6 +615,7 @@ if __name__ == "__main__":
     
     print("\n" + "=" * 60)
     print("[PASS] Divine Monad tests completed!")
+
 
 
 
