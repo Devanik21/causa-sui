@@ -1,56 +1,35 @@
 import os
 import sys
 
-# ============================================================
-# 🧬 PATH SETUP & NUCLEAR EXORCISM (THE FINAL FIX)
-# ============================================================
-# 1. Define Key Directories
-current_file_path = os.path.abspath(__file__)
-base_dir = os.path.dirname(current_file_path)             # .../Streamlit App
-nano_agi_dir = os.path.join(base_dir, "NanoAGI")          # .../Streamlit App/NanoAGI
+# --- CRITICAL: Add root to path BEFORE any other imports ---
+# Handle various directory structures (Local / NanoAGI / Streamlit Cloud)
+base_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(base_dir)
+grandparent_dir = os.path.dirname(parent_dir)
 
-# 2. PRIORITY ONE: The App Directory (Contains the REAL core.py)
-# We remove and re-insert at index 0 to ensure it is ALWAYS the first choice
-if base_dir in sys.path: sys.path.remove(base_dir)
-sys.path.insert(0, base_dir)
+# Potential locations for Divine_Monad and core modules
+search_paths = [
+    base_dir,
+    parent_dir,
+    os.path.join(base_dir, "NanoAGI"),
+    os.path.join(parent_dir, "NanoAGI"),
+    os.path.join(grandparent_dir, "Streamlit App", "NanoAGI")
+]
 
-# 3. PRIORITY TWO: NanoAGI (So we can find Divine_Monad)
-if nano_agi_dir in sys.path: sys.path.remove(nano_agi_dir)
-sys.path.insert(1, nano_agi_dir)
+for path in search_paths:
+    if os.path.isdir(path) and path not in sys.path:
+        # Check if this path contains our key folders
+        if os.path.exists(os.path.join(path, "Divine_Monad")) or os.path.exists(os.path.join(path, "core.py")):
+            sys.path.insert(0, path)
 
-# 4. THE NUCLEAR EXORCIST ☢️
-# Removes user modules from cache to force a fresh reload on every run.
-if "streamlit" in sys.modules:
-    # Target every custom module in your specific repo structure
-    targets = [
-        "Divine_Monad", 
-        "core", 
-        "plasticity_network", 
-        "meta_learner", 
-        "NanoAGI",
-        "voicebox",
-        "introspection",
-        "monad"
-    ]
-    
-    # Snapshot keys to avoid runtime modification errors
-    for key in list(sys.modules.keys()):
-        for t in targets:
-            # Delete if it matches exact name OR is a submodule (e.g., 'core' or 'Divine_Monad.phase1')
-            if key == t or key.startswith(t + "."):
-                sys.modules.pop(key, None)
-                break
 
-# ============================================================
-# 🚀 STANDARD IMPORTS START HERE
-# ============================================================
 import streamlit as st
 import torch
 import time
 import datetime
 import io
 
-# Optional imports for RSS feed functionality
+# Optional imports for RSS feed functionality (graceful degradation)
 try:
     import requests
     import xml.etree.ElementTree as ET
@@ -58,23 +37,80 @@ try:
 except ImportError:
     RSS_AVAILABLE = False
 
+
+import os
+import sys
+
+# ============================================================
+# 🧬 PATH SETUP (CRITICAL: MUST RUN FIRST)
+# ============================================================
+# We define the environment first so imports can be found.
+base_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(base_dir)
+grandparent_dir = os.path.dirname(parent_dir)
+
+# Define where your custom modules live (The NanoAGI folder)
+nano_agi_paths = [
+    os.path.join(base_dir, "NanoAGI"),
+    os.path.join(parent_dir, "NanoAGI"),
+    os.path.join(grandparent_dir, "Streamlit App", "NanoAGI"),
+    base_dir, # Fallback for local dev
+    parent_dir 
+]
+
+# Add these to sys.path if missing
+for path in nano_agi_paths:
+    if os.path.isdir(path) and path not in sys.path:
+        sys.path.insert(0, path)
+
+# ============================================================
+# ☢️ NUCLEAR HOT RELOAD EXORCIST (THE FINAL FIX)
+# ============================================================
+# This forces Python to completely forget your custom brain modules
+# on every reload. This solves the "KeyError" and "Zombie State".
+
+# List of ALL custom module prefixes in your repo
+CUSTOM_MODULES = [
+    "Divine_Monad",       # The main package
+    "core",               # core.py
+    "plasticity_network", # plasticity_network.py
+    "meta_learner",       # meta_learner.py
+    "NanoAGI"             # Just in case accessed as a package
+]
+
+# Only purge if Streamlit is already running (Hot Reload)
+if "streamlit" in sys.modules:
+    # Create a list of keys to delete (avoid modifying dict while iterating)
+    keys_to_purge = []
+    for key in list(sys.modules.keys()):
+        # Check if the module starts with any of our custom names
+        for target in CUSTOM_MODULES:
+            if key == target or key.startswith(target + "."):
+                keys_to_purge.append(key)
+                break
+
+    # Execute Order 66 (Delete them)
+    for key in keys_to_purge:
+        del sys.modules[key]
+
+
+
 # --- PAGE CONFIG (Must be first Streamlit command for Streamlit UI) ---
 st.set_page_config(
-    page_title="🧬 Nano-Daemon: Hebbian Organism",
-    page_icon="🧠",
+    page_title="Hebbian Organism",
+    page_icon="🧬",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# --- IMPORTS FROM OUR ORGANISM (Streamlit App level) ---
-# Because we set base_dir as Priority 1, these will strictly load from 'Streamlit App/'
+# --- IMPORTS FROM OUR ORGANISM ---
 from core import PlasticCortex
 from plasticity_network import PlasticityNetwork
 from meta_learner import MetaLearner
 
 # --- DIVINE MONAD IMPORTS (ALL 4 PHASES) ---
 try:
-    # Phase 1: Causal Monitor
+    # Phase 1: Causal Monitor (Soul - Agency Measurement)
     from Divine_Monad.phase1_causal_monitor import (
         MicroCausalNet, create_xor_net,
         binary_entropy, calc_micro_ei, calc_macro_ei, calc_emergence_score,
@@ -82,25 +118,24 @@ try:
         TrainingConfig, train_emergence
     )
     
-    # Phase 2: Topological Computing
+    # Phase 2: Topological Computing (Body - Dynamic Graph)
     from Divine_Monad.phase2_topological import (
         DynamicGraphNet, TopologicalMutator, MutationResult,
         HybridOptimizer, HybridConfig
     )
     
-    # Phase 3: Holographic Memory
+    # Phase 3: Holographic Memory (Mind - Distributed Storage)
     from Divine_Monad.phase3_holographic import (
         Hypervector, Codebook, Transducer, NeuralKV
     )
     
-    # Phase 4: Conscious (I Am)
+    # Phase 4: I Am (Self-Awareness & Consciousness)
     from Divine_Monad.phase4_iam.monad import DivineMonad, MonadConfig, MonadState
     from Divine_Monad.phase4_iam.voicebox import VoiceBox, VoiceThresholds
     from Divine_Monad.phase4_iam.introspection import FourierEncoder, IntrospectionEncoder, SelfState
-
+    
     DIVINE_MONAD_AVAILABLE = True
 except ImportError as e:
-    print(f"⚠️ Divine Monad Import Error: {e}")
     DIVINE_MONAD_AVAILABLE = False
 
 # --- CUSTOM CSS FOR A PREMIUM DARK THEME ---
