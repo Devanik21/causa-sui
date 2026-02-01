@@ -1056,7 +1056,7 @@ def fragment_monad_dashboard():
             if col_in2.button("🌱 Execute Mitosis", width="stretch"):
                 result = monad.mutator.grow_node(monad.graph, growth_parent)
                 st.toast(result.message)
-                st.rerun()
+               # st.rerun()
                 
             if col_in3.button("🔗 Add Random Edge", help="Create a new synapse", width="stretch"):
                 import random
@@ -1067,7 +1067,7 @@ def fragment_monad_dashboard():
                     st.toast(f"✅ Edge {src}→{tgt} added", icon="🔗")
                 else:
                     st.toast(f"❌ {result.message}", icon="⚠️")
-                st.rerun()
+                #st.rerun()
                 
         except Exception as e:
             st.warning(f"Graph stats unavailable: {e}")
@@ -1098,11 +1098,11 @@ def fragment_monad_dashboard():
             if col_m2.button("💥 Induce Synaptic Loss", width="stretch"):
                 mem.damage(dmg_pct)
                 st.toast(f"Memory loss: {dmg_pct:.0%}")
-                st.rerun()
+               # st.rerun()
 
             if st.button("🗑️ Sanitize All Engrams", width="stretch"):
                 mem.clear()
-                st.rerun()
+               # st.rerun()
                 
         except Exception as e:
             st.warning(f"Memory subsystem reporting instability: {e}")
@@ -1157,7 +1157,7 @@ def fragment_monad_dashboard():
             if col_p2.button("🩸 Prune Nodes", help="Remove specific number of hidden nodes"):
                 monad.lobotomize(num_to_prune)
                 st.toast(f"⚠️ Lobotomy: {num_to_prune} nodes removed.", icon="🩸")
-                st.rerun()
+                #st.rerun()
 
             st.divider()
 
@@ -1185,7 +1185,7 @@ def fragment_monad_dashboard():
                 
                 monad._update_topology_metrics()
                 monad._run_slow_loop()
-                st.rerun()
+                #st.rerun()
 
             st.divider()
 
