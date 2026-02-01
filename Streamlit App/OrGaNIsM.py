@@ -93,6 +93,12 @@ try:
     from core import PlasticCortex
     from plasticity_network import PlasticityNetwork
     from meta_learner import MetaLearner
+    
+    # --- DIAGNOSTIC: Confirm Core Version ---
+    import inspect
+    core_path = inspect.getfile(PlasticCortex)
+    print(f"🧠 CORE LOADED FROM: {core_path}")
+    # st.write(f"DEBUG: Core Path: {core_path}") # Uncomment if debugging Cloud paths
 except ImportError as e:
     st.error(f"❌ Core Module Import Failed: {e}")
     st.info(f"Searching in: {sys.path}")
@@ -471,12 +477,20 @@ def feed_organism(file_bytes, filename):
         # --- NUCLEAR FIX: Try/Except Block for Compatibility ---
         try:
             # Try to pass the disable_learning flag (New Core)
+            # Latest core returns: last_activation, total_entropy / seq_len, mean_signal
             activation, stability, mean_signal = brain(data, disable_learning=use_genome)
-        except TypeError:
-            # Fallback if core.py is older and doesn't accept the flag
-            activation, stability, mean_signal = brain(data)
-            # If we really wanted to use the genome but couldn't disable internal learning,
-            # we just proceed. It means double-learning (Internal + Genome), which is safe but chaotic.
+        except TypeError as e:
+            # Fallback if core.py is older or has a different signature
+            st.warning(f"⚠️ Core Signature Mismatch: {e}. Falling back to legacy call.")
+            results = brain(data)
+            if isinstance(results, tuple):
+                activation = results[0]
+                stability = results[1]
+                mean_signal = results[2] if len(results) > 2 else results[0] # Fallback
+            else:
+                activation = results
+                stability = 0.5
+                mean_signal = results
         # -----------------------------------------------------
 
         # --- PATH A: META-EVOLVED PLASTICITY (Batch Mode) ---
