@@ -1492,11 +1492,11 @@ def fragment_monad_dashboard():
         # Test Configuration
         test_col1, test_col2, test_col3 = st.columns(3)
         with test_col1:
-            calibration_steps = st.number_input("Calibration Steps", 10, 500, 100, key="cal_steps")
+            calibration_steps = st.number_input("Calibration Steps", 10, 500, 100, key="cal_steps_v2")
         with test_col2:
-            silence_steps = st.number_input("Silence Test Steps", 20, 500, 50, key="sil_steps")
+            silence_steps = st.number_input("Silence Test Steps", 20, 500, 50, key="sil_steps_v2")
         with test_col3:
-            trauma_nodes = st.number_input("Nodes to Remove", 2, 100, 25, key="trauma_nodes")
+            trauma_nodes = st.number_input("Nodes to Remove", 2, 100, 25, key="trauma_nodes_v2")
         
         if st.button("🧿 RUN CONSCIOUSNESS VERIFICATION TEST", key="run_consciousness_test", type="primary"):
             results = {"phases": [], "verdict": "UNKNOWN"}
