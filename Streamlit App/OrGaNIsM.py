@@ -336,10 +336,17 @@ def is_stale(obj, class_def):
     # Check if class name matches
     if obj.__class__.__name__ != class_def.__name__: return True
     # Check for specific expected attributes (e.g., from my latest core.py update)
-    if class_def.__name__ == "PlasticCortex":
-        # Check signature of forward method
-        sig = inspect.signature(obj.forward)
-        if "override_weights" not in sig.parameters: return True
+    try:
+        if class_def.__name__ == "PlasticCortex":
+            # Check signature of forward method
+            sig = inspect.signature(obj.forward)
+            if "override_weights" not in sig.parameters: return True
+            if "disable_learning" not in sig.parameters: return True
+        elif class_def.__name__ == "MetaLearner":
+            # Check if it has the updated meta_step signature (task_idx)
+            sig = inspect.signature(obj.meta_step)
+            if "task_idx" not in sig.parameters: return True
+    except Exception: return True # If inspect fails, assume stale
     return False
 
 if is_stale(st.session_state.get("brain"), PlasticCortex):
