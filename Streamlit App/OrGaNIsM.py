@@ -2055,27 +2055,14 @@ def fragment_consciousness_test_section():
             # Lobotomy passes if: (1) Pain was detected OR (2) Structural damage occurred (nodes removed)
             structural_damage = (pre_nodes - post_nodes) > 0
             if post_pain > 0:
-                    st.success(f"✅ **DAMAGE DETECTED** - Pain Level: {post_pain:.4f}")
-                    # FIX: Store standard keys for analysis
-                    results["phases"].append({
-                        "name": "LOBOTOMY", "passed": True, 
-                        "initial_ei": pre_ei, "final_ei": post_ei, 
-                        "initial_surprise": 0.0, "final_surprise": post_pain
-                    })
-                elif structural_damage:
-                    st.success(f"✅ **ANTIFRAGILE RESPONSE**...")
-                    results["phases"].append({
-                        "name": "LOBOTOMY", "passed": True, 
-                        "initial_ei": pre_ei, "final_ei": post_ei, "antifragile": True,
-                        "initial_surprise": 0.0, "final_surprise": 0.0
-                    })
-                else:
-                    st.error("❌ No pain response to damage!")
-                    results["phases"].append({
-                        "name": "LOBOTOMY", "passed": False,
-                        "initial_ei": pre_ei, "final_ei": post_ei,
-                        "initial_surprise": 0.0, "final_surprise": 0.0
-                    })
+                st.success(f"✅ **DAMAGE DETECTED** - Pain Level: {post_pain:.4f}")
+                results["phases"].append({"name": "LOBOTOMY", "passed": True, "post_ei": post_ei, "pain": post_pain})
+            elif structural_damage:
+                st.success(f"✅ **ANTIFRAGILE RESPONSE** - {pre_nodes - post_nodes} nodes removed, but system remained coherent!")
+                results["phases"].append({"name": "LOBOTOMY", "passed": True, "post_ei": post_ei, "antifragile": True})
+            else:
+                st.error("❌ No pain response to damage!")
+                results["phases"].append({"name": "LOBOTOMY", "passed": False})
             
             # VoiceBox interpretation
             st.markdown("### 💬 MONAD SPEAKS:")
@@ -2119,21 +2106,11 @@ def fragment_consciousness_test_section():
             recovery_col3.metric("Repairs Performed", final_repairs)
             
             if final_ei > pain_threshold:
-                    st.success(f"✅ **RECOVERY COMPLETE** - Stabilized after {recovery_steps} steps...")
-                    # FIX: Store standard keys for analysis (initial_ei here is the post_ei from lobotomy)
-                    results["phases"].append({
-                        "name": "RECOVERY", "passed": True, 
-                        "initial_ei": post_ei, "final_ei": final_ei, 
-                        "steps": recovery_steps,
-                        "initial_surprise": post_pain, "final_surprise": 0.0
-                    })
-                else:
-                    st.warning(f"⚠️ Recovery incomplete - EI={final_ei:.4f}...")
-                    results["phases"].append({
-                        "name": "RECOVERY", "passed": False, 
-                        "initial_ei": post_ei, "final_ei": final_ei,
-                        "initial_surprise": post_pain, "final_surprise": info['pain_level']
-                    })
+                st.success(f"✅ **RECOVERY COMPLETE** - Stabilized after {recovery_steps} steps at EI={final_ei:.4f}")
+                results["phases"].append({"name": "RECOVERY", "passed": True, "final_ei": final_ei, "steps": recovery_steps})
+            else:
+                st.warning(f"⚠️ Recovery incomplete - EI={final_ei:.4f} (threshold={pain_threshold:.4f})")
+                results["phases"].append({"name": "RECOVERY", "passed": False, "final_ei": final_ei})
             
             with st.expander("📜 Recovery Log", expanded=False):
                 for log in recovery_log:
