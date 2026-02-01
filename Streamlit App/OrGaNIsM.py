@@ -2299,7 +2299,7 @@ def fragment_consciousness_test_section():
                 
                 # Binarize EI data for LZ complexity
                 ei_binary = ''.join(['1' if x > np.median(ei_array) else '0' for x in ei_array])
-                lz_complexity = lempel_ziv_complexity(ei_binary) / len(ei_binary)
+                lz_complexity = lempel_ziv_complexity(ei_binary) / len(ei_binary) if len(ei_binary) > 0 else 0.0
                 
                 # 8. Recovery Hysteresis (Non-reversibility metric)
                 lobotomy_idx = next((i for i, p in enumerate(results["phases"]) if p["phase"] == "Lobotomy"), None)
