@@ -151,7 +151,7 @@ class DivineMonad(nn.Module):
         )
         
         # === PHASE 2: TOPOLOGY MUTATOR ===
-        self.mutator = TopologicalMutator()
+        self.mutator.hebbian_evolve(self.graph)
         
         # === PHASE 3: THE MIND (Holographic Memory) ===
         # Note: Using smaller holo_dim for efficiency in integration
@@ -615,6 +615,7 @@ if __name__ == "__main__":
     
     print("\n" + "=" * 60)
     print("[PASS] Divine Monad tests completed!")
+
 
 
 
