@@ -5,7 +5,8 @@ import torch
 import time
 import datetime
 import io
-
+# --- DIAGNOSTIC: Confirm Core Version ---
+import inspect
 # ============================================================
 # 🧬 PATH SETUP (CRITICAL: MUST RUN FIRST)
 # ============================================================
@@ -94,8 +95,7 @@ try:
     from plasticity_network import PlasticityNetwork
     from meta_learner import MetaLearner
     
-# --- DIAGNOSTIC: Confirm Core Version ---
-import inspect
+
 sig = inspect.signature(PlasticCortex.forward)
 HAS_OVERRIDE = "override_weights" in sig.parameters
 
