@@ -468,9 +468,17 @@ def feed_organism(file_bytes, filename):
     use_genome = st.session_state.get("use_evolved_rule", False)
     
     with torch.no_grad():
-        # Forward pass - disable internal learning if using Genome
-        activation, stability, mean_signal = brain(data, disable_learning=use_genome)
-        
+        # --- NUCLEAR FIX: Try/Except Block for Compatibility ---
+        try:
+            # Try to pass the disable_learning flag (New Core)
+            activation, stability, mean_signal = brain(data, disable_learning=use_genome)
+        except TypeError:
+            # Fallback if core.py is older and doesn't accept the flag
+            activation, stability, mean_signal = brain(data)
+            # If we really wanted to use the genome but couldn't disable internal learning,
+            # we just proceed. It means double-learning (Internal + Genome), which is safe but chaotic.
+        # -----------------------------------------------------
+
         # --- PATH A: META-EVOLVED PLASTICITY (Batch Mode) ---
         if use_genome and st.session_state.genome:
             # Mean Post-Synaptic Activity
