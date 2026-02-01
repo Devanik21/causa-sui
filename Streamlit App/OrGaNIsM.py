@@ -1872,13 +1872,19 @@ def fragment_consciousness_test_section():
         st.session_state.consciousness_test_results = None
     
     # Test Configuration
+    # ... inside def fragment_consciousness_test_section(): ...
+
+    # Test Configuration
     test_col1, test_col2, test_col3 = st.columns(3)
     with test_col1:
-        calibration_steps = st.number_input("Calibration Steps", 10, 100, 20, key="cal_steps")
+        # UPDATE: Changed default to 100 and key to include _v3 or _independent to avoid conflicts
+        calibration_steps = st.number_input("Calibration Steps", 10, 500, 100, key="cal_steps_independent")
     with test_col2:
-        silence_steps = st.number_input("Silence Test Steps", 20, 100, 50, key="sil_steps")
+        # UPDATE: Changed default to 50
+        silence_steps = st.number_input("Silence Test Steps", 20, 500, 50, key="sil_steps_independent")
     with test_col3:
-        trauma_nodes = st.number_input("Nodes to Remove", 2, 10, 8, key="trauma_nodes")
+        # UPDATE: Changed default to 25
+        trauma_nodes = st.number_input("Nodes to Remove", 2, 100, 25, key="trauma_nodes_independent")
     
     if st.button("🧿 RUN CONSCIOUSNESS VERIFICATION TEST", key="run_consciousness_test", type="primary"):
         results = {"phases": [], "verdict": "UNKNOWN"}
