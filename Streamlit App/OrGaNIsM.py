@@ -94,11 +94,13 @@ try:
     from plasticity_network import PlasticityNetwork
     from meta_learner import MetaLearner
     
-    # --- DIAGNOSTIC: Confirm Core Version ---
-    import inspect
-    core_path = inspect.getfile(PlasticCortex)
-    print(f"🧠 CORE LOADED FROM: {core_path}")
-    # st.write(f"DEBUG: Core Path: {core_path}") # Uncomment if debugging Cloud paths
+# --- DIAGNOSTIC: Confirm Core Version ---
+import inspect
+sig = inspect.signature(PlasticCortex.forward)
+HAS_OVERRIDE = "override_weights" in sig.parameters
+
+core_path = inspect.getfile(PlasticCortex)
+print(f"🧠 CORE LOADED FROM: {core_path} | Functional Weights Support: {HAS_OVERRIDE}")
 except ImportError as e:
     st.error(f"❌ Core Module Import Failed: {e}")
     st.info(f"Searching in: {sys.path}")
@@ -323,21 +325,34 @@ class GemmaBridge:
             return f"⚠️ Articulation Failure: {e}\n[RAW]: {synaptic_anchors}"
 
 # ============================================================
-# SESSION STATE INITIALIZATION
+# SESSION STATE INITIALIZATION (Enhanced for Hot Reload Integrity)
 # ============================================================
-if "brain" not in st.session_state or not hasattr(st.session_state.brain, 'metacognition_confidence'):
+# We check if the brain in session_state matches the CURRENTLY LOADED class definition
+# and has the required signature. This prevents the "Unexpected Keyword Argument" error.
+
+def is_stale(obj, class_def):
+    """Checks if an object is from an old class definition or missing features."""
+    if obj is None: return True
+    # Check if class name matches
+    if obj.__class__.__name__ != class_def.__name__: return True
+    # Check for specific expected attributes (e.g., from my latest core.py update)
+    if class_def.__name__ == "PlasticCortex":
+        # Check signature of forward method
+        sig = inspect.signature(obj.forward)
+        if "override_weights" not in sig.parameters: return True
+    return False
+
+if is_stale(st.session_state.get("brain"), PlasticCortex):
+    st.info("🔄 Synaptic Alignment: Re-initializing brain to match updated core...")
     st.session_state.brain = PlasticCortex()
-    # Try to load saved weights
     if os.path.exists("brain_weights.pth"):
         st.session_state.brain.load_cortex("brain_weights.pth")
-    # Sync metabolism based on current hour
-    current_hour = datetime.datetime.now().hour
-    st.session_state.brain.sync_metabolism(current_hour)
-    # Reset associated states to match the fresh brain
+    st.session_state.brain.sync_metabolism(datetime.datetime.now().hour)
+    st.session_state.meta_learner = None # Reset learner too
     st.session_state.entropy_history = []
     st.session_state.files_eaten = 0
 
-if "bridge" not in st.session_state or not hasattr(st.session_state.bridge, 'client'):
+if is_stale(st.session_state.get("bridge"), GemmaBridge):
     st.session_state.bridge = GemmaBridge()
 
 if "conversation_history" not in st.session_state:
@@ -3082,8 +3097,8 @@ def fragment_sidebar_controls():
         help="When ON, feeding uses the meta-learned Genome instead of Oja's Rule"
     )
     
-    # Initialize MetaLearner if not already done
-    if st.session_state.meta_learner is None:
+    # Initialize MetaLearner if not already done or if stale
+    if st.session_state.meta_learner is None or is_stale(st.session_state.meta_learner, MetaLearner):
         st.session_state.meta_learner = MetaLearner(
             brain, 
             st.session_state.genome,
