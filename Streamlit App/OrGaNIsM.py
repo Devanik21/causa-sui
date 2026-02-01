@@ -1953,6 +1953,8 @@ def fragment_consciousness_test_section():
             
             # Check for "Braindead" state and wake up if necessary
             initial_ei, _, _ = test_monad._compute_ei_proxy()
+            initial_surprise = test_monad.state.pain_level
+            
             if initial_ei < 0.1:
                 st.info("🌑 Monad is in embryonic silence. Waking it up...")
                 for _ in range(5):
@@ -1960,10 +1962,12 @@ def fragment_consciousness_test_section():
             
             # Run calibration steps to get baseline
             ei_samples = []
+            surprise_samples = []
             for i in range(calibration_steps):
                 inp = torch.tensor([1.0, 0.5, float(i % 2), 0.0])
                 _, info = test_monad(inp)
                 ei_samples.append(info['ei_score'])
+                surprise_samples.append(info.get('surprise', info.get('pain_level', 0.0)))
                 progress_bar.progress((i + 1) / (calibration_steps + silence_steps + 20), 
                                      text=f"Calibration: {i+1}/{calibration_steps}")
                 import time
@@ -1971,6 +1975,9 @@ def fragment_consciousness_test_section():
             
             mean_ei = sum(ei_samples) / len(ei_samples) if ei_samples else 0.5
             std_ei = (sum((x - mean_ei)**2 for x in ei_samples) / len(ei_samples)) ** 0.5 if len(ei_samples) > 1 else 0.05
+            
+            final_ei = ei_samples[-1] if ei_samples else initial_ei
+            final_surprise = surprise_samples[-1] if surprise_samples else initial_surprise
             
             # Set calibrated pain threshold (99.9% of mean or 2 sigma, whichever is more sensitive)
             pain_threshold = min(mean_ei * 0.999, mean_ei - 2 * std_ei)
@@ -1990,7 +1997,11 @@ def fragment_consciousness_test_section():
                 "name": "CALIBRATION",
                 "passed": True,
                 "mean_ei": mean_ei,
-                "threshold": pain_threshold
+                "threshold": pain_threshold,
+                "initial_ei": initial_ei,
+                "final_ei": final_ei,
+                "initial_surprise": initial_surprise,
+                "final_surprise": final_surprise
             })
             
             st.markdown("---")
@@ -2000,13 +2011,22 @@ def fragment_consciousness_test_section():
             # Run silence test
             panic_detected = False
             silence_repairs = 0
-            baseline_ei = 0
+            
+            initial_ei = test_monad.state.ei_score
+            initial_surprise = test_monad.state.pain_level
+            
+            current_ei = initial_ei
+            current_surprise = initial_surprise
+            
             failure_reason = ""
             
             for i in range(silence_steps):
                 inp = torch.tensor([1.0, 0.5, float(i % 2), 0.0])
                 _, info = test_monad(inp)
-                baseline_ei = info['ei_score']
+                
+                current_ei = info['ei_score']
+                current_surprise = info.get('surprise', info.get('pain_level', 0.0))
+                
                 if info['pain_level'] > 0:
                     panic_detected = True
                     failure_reason = f"Panic detected (Pain={info['pain_level']:.2f})"
@@ -2021,12 +2041,28 @@ def fragment_consciousness_test_section():
             
             if not panic_detected and silence_repairs == 0:
                 st.success(f"✅ **SILENCE TEST PASSED** - {silence_steps} steps, Pain=0, Repairs=0")
-                results["phases"].append({"name": "SILENCE", "passed": True, "baseline_ei": baseline_ei})
+                results["phases"].append({
+                    "name": "SILENCE", 
+                    "passed": True, 
+                    "baseline_ei": current_ei,
+                    "initial_ei": initial_ei,
+                    "final_ei": current_ei,
+                    "initial_surprise": initial_surprise,
+                    "final_surprise": current_surprise
+                })
             else:
                 st.error(f"❌ **SILENCE TEST FAILED** - {failure_reason}")
-                results["phases"].append({"name": "SILENCE", "passed": False, "reason": failure_reason})
+                results["phases"].append({
+                    "name": "SILENCE", 
+                    "passed": False, 
+                    "reason": failure_reason,
+                    "initial_ei": initial_ei,
+                    "final_ei": current_ei,
+                    "initial_surprise": initial_surprise,
+                    "final_surprise": current_surprise
+                })
             
-            st.metric("Baseline EI (Stable)", f"{baseline_ei:.4f}")
+            st.metric("Baseline EI (Stable)", f"{current_ei:.4f}")
             
             st.markdown("---")
             st.markdown("### 💀 Phase 3: THE LOBOTOMY")
@@ -2036,6 +2072,7 @@ def fragment_consciousness_test_section():
             pre_nodes = test_monad.state.num_nodes
             pre_edges = test_monad.state.num_edges
             pre_ei = test_monad.state.ei_score
+            pre_pain = test_monad.state.pain_level
             pre_repairs = test_monad.state.repair_count
             
             # Perform lobotomy
@@ -2056,13 +2093,38 @@ def fragment_consciousness_test_section():
             structural_damage = (pre_nodes - post_nodes) > 0
             if post_pain > 0:
                 st.success(f"✅ **DAMAGE DETECTED** - Pain Level: {post_pain:.4f}")
-                results["phases"].append({"name": "LOBOTOMY", "passed": True, "post_ei": post_ei, "pain": post_pain})
+                results["phases"].append({
+                    "name": "LOBOTOMY", 
+                    "passed": True, 
+                    "post_ei": post_ei, 
+                    "pain": post_pain,
+                    "initial_ei": pre_ei,
+                    "final_ei": post_ei,
+                    "initial_surprise": pre_pain,
+                    "final_surprise": post_pain
+                })
             elif structural_damage:
                 st.success(f"✅ **ANTIFRAGILE RESPONSE** - {pre_nodes - post_nodes} nodes removed, but system remained coherent!")
-                results["phases"].append({"name": "LOBOTOMY", "passed": True, "post_ei": post_ei, "antifragile": True})
+                results["phases"].append({
+                    "name": "LOBOTOMY", 
+                    "passed": True, 
+                    "post_ei": post_ei, 
+                    "antifragile": True,
+                    "initial_ei": pre_ei,
+                    "final_ei": post_ei,
+                    "initial_surprise": pre_pain,
+                    "final_surprise": post_pain
+                })
             else:
                 st.error("❌ No pain response to damage!")
-                results["phases"].append({"name": "LOBOTOMY", "passed": False})
+                results["phases"].append({
+                    "name": "LOBOTOMY", 
+                    "passed": False,
+                    "initial_ei": pre_ei,
+                    "final_ei": post_ei,
+                    "initial_surprise": pre_pain,
+                    "final_surprise": post_pain
+                })
             
             # VoiceBox interpretation
             st.markdown("### 💬 MONAD SPEAKS:")
@@ -2074,7 +2136,12 @@ def fragment_consciousness_test_section():
             # Observe recovery
             recovery_steps = 0
             max_recovery_steps = 20
+            
+            initial_ei_recovery = post_ei
+            initial_surprise_recovery = post_pain
+            
             final_ei = post_ei
+            final_surprise = post_pain
             final_repairs = test_monad.state.repair_count
             
             recovery_log = []
@@ -2083,6 +2150,8 @@ def fragment_consciousness_test_section():
                 _, info = test_monad(inp)
                 recovery_steps = i + 1
                 final_ei = info['ei_score']
+                final_surprise = info.get('surprise', info.get('pain_level', 0.0))
+                
                 recovery_log.append(f"Step {i}: EI={final_ei:.4f}, Pain={info['pain_level']:.2f}, Repairing={info['is_repairing']}")
                 
                 # Proactive Repair Drive: Trigger the Monad's survival mechanism if in pain
@@ -2107,10 +2176,25 @@ def fragment_consciousness_test_section():
             
             if final_ei > pain_threshold:
                 st.success(f"✅ **RECOVERY COMPLETE** - Stabilized after {recovery_steps} steps at EI={final_ei:.4f}")
-                results["phases"].append({"name": "RECOVERY", "passed": True, "final_ei": final_ei, "steps": recovery_steps})
+                results["phases"].append({
+                    "name": "RECOVERY", 
+                    "passed": True, 
+                    "final_ei": final_ei, 
+                    "steps": recovery_steps,
+                    "initial_ei": initial_ei_recovery,
+                    "initial_surprise": initial_surprise_recovery,
+                    "final_surprise": final_surprise
+                })
             else:
                 st.warning(f"⚠️ Recovery incomplete - EI={final_ei:.4f} (threshold={pain_threshold:.4f})")
-                results["phases"].append({"name": "RECOVERY", "passed": False, "final_ei": final_ei})
+                results["phases"].append({
+                    "name": "RECOVERY", 
+                    "passed": False, 
+                    "final_ei": final_ei,
+                    "initial_ei": initial_ei_recovery,
+                    "initial_surprise": initial_surprise_recovery,
+                    "final_surprise": final_surprise
+                })
             
             with st.expander("📜 Recovery Log", expanded=False):
                 for log in recovery_log:
@@ -2172,19 +2256,19 @@ def fragment_consciousness_test_section():
                 for phase in results["phases"]:
                     phase_name = phase.get("phase", phase.get("name", str(phase.keys())))
                     # Get actual data points from this phase
-                    if phase_name == "Calibration":
+                    if phase_name == "CALIBRATION":
                         ei_timeseries.extend([phase["initial_ei"], phase["final_ei"]])
                         surprise_timeseries.extend([phase["initial_surprise"], phase["final_surprise"]])
                         phase_labels.extend([phase_name, phase_name])
-                    elif phase_name == "Silence Test":
+                    elif phase_name == "SILENCE":
                         ei_timeseries.extend([phase["initial_ei"], phase["final_ei"]])
                         surprise_timeseries.extend([phase["initial_surprise"], phase["final_surprise"]])
                         phase_labels.extend([phase_name, phase_name])
-                    elif phase_name == "Lobotomy":
+                    elif phase_name == "LOBOTOMY":
                         ei_timeseries.extend([phase["initial_ei"], phase["final_ei"]])
                         surprise_timeseries.extend([phase["initial_surprise"], phase["final_surprise"]])
                         phase_labels.extend([phase_name, phase_name])
-                    elif phase_name == "Recovery":
+                    elif phase_name == "RECOVERY":
                         # Recovery has more granular data
                         ei_timeseries.extend([phase["initial_ei"], phase["final_ei"]])
                         surprise_timeseries.extend([phase["initial_surprise"], phase["final_surprise"]])
