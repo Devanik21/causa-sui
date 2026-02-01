@@ -106,6 +106,38 @@ except ImportError as e:
     st.info(f"Searching in: {sys.path}")
     st.stop()
 
+
+
+# ============================================================
+# 🧟 ZOMBIE BRAIN KILLER (PASTE THIS HERE)
+# ============================================================
+# Even if we reload the module, the 'brain' object in session_state 
+# might still be an instance of the OLD class. We must check and kill it.
+
+if "brain" in st.session_state:
+    import inspect
+    try:
+        # Check if the current brain has the new 'override_weights' argument
+        # (Or any new argument you added that caused the error)
+        sig = inspect.signature(st.session_state.brain.forward)
+        
+        if "override_weights" not in sig.parameters:
+            st.toast("🧠 Detected Old Brain Architecture. Performing Transplant...", icon="🧟")
+            # Re-create the brain using the NEW class definition we just imported
+            st.session_state.brain = PlasticCortex()  
+            
+            # Optional: Attempt to reload weights so you don't lose training
+            if os.path.exists("brain_weights.pth"):
+                try:
+                    st.session_state.brain.load_cortex("brain_weights.pth")
+                except:
+                    pass # If weights don't match, start fresh
+    except Exception:
+        # If inspection fails (e.g. class changed too much), force reset
+        st.session_state.brain = PlasticCortex()
+
+
+
 # --- DIVINE MONAD IMPORTS (ALL 4 PHASES) ---
 try:
     # Phase 1: Causal Monitor (Soul - Agency Measurement)
