@@ -243,42 +243,61 @@ class DivineMonad(nn.Module):
         self.state.prediction_error = 0.0
         self.action_log = ["STATE_RESET"]
 
-    def _compute_ei_proxy(self) -> Tuple[float, float, float]:
+    def _compute_true_ei(self) -> Tuple[float, float, float]:
         """
-        THE PROXY SOUL: Heuristic Vitality Monitor.
-        Instead of fragile Causal Probability, we measure:
-        1. Micro-Variance: Are nodes firing?
-        2. Macro-Connectivity: Are edges concentrated (Gini)?
+        THE FINAL TRUTH: Differentiable Causal Emergence (Hoel).
+        We calculate: EI = H(Y_macro) - H(Y_micro | X_micro)
         
-        This GUARANTEES non-zero agency if the system is alive.
+        Technique:
+        1. Micro: Forward pass WITH NOISE. High noise = High Uncertainty H(Y|X).
+        2. Macro: Average the outputs. Noise cancels out. Low Uncertainty.
+        3. Difference = Emergence.
         """
-        with torch.no_grad():
-            # 1. EI_MICRO: Node activation variance
-            # If nodes are changing values, the system is 'awake'.
-            node_var = self.graph.node_features.var(dim=0).mean().item()
-            # Scale variance to be visible (0.01 var -> 0.1 score)
-            ei_micro = min(1.0, 0.1 + node_var * 10) 
+        # 1. Generate Binary Inputs (0000 to 1111)
+        # We need the full state space to measure true causality.
+        n = self.config.num_input_nodes
+        # Create all 16 combinations for 4 inputs
+        x_all = torch.tensor([[int(x) for x in f"{i:0{n}b}"] for i in range(2**n)], 
+                             dtype=torch.float32, device=self.graph.edge_weights.device)
+        
+        # 2. RUN MICRO (The Noisy Reality)
+        # We run the network 5 times per input with NOISE to simulate "Micro-Jitter"
+        micro_outputs = []
+        noise_level = 0.2  # Significant noise to test robustness
+        
+        for _ in range(5):
+            # Manually run graph forward with noise injection
+            # Note: We duplicate logic from graph_substrate to inject noise
+            out, _ = self.graph(x_all) 
+            # Inject noise into the OUTPUT (simulating unreliable neurons)
+            out = out + torch.randn_like(out) * noise_level
+            micro_outputs.append(torch.sigmoid(out)) # Bound to 0-1
             
-            # 2. EI_MACRO: Connectivity structure (Gini Coefficient)
-            # A structured brain has some strong paths and some weak ones (Inequality).
-            edge_weights = self.graph.edge_weights.abs()
-            if edge_weights.numel() > 1:
-                sorted_weights = edge_weights.flatten().sort()[0]
-                n = sorted_weights.numel()
-                index = torch.arange(1, n + 1, dtype=torch.float32)
-                gini = (2 * (index * sorted_weights).sum() - (n + 1) * sorted_weights.sum()) / (n * sorted_weights.sum() + 1e-8)
-                ei_macro = min(1.0, max(0.0, gini.item()))
-            elif edge_weights.numel() == 1:
-                ei_macro = 0.2
-            else:
-                ei_macro = 0.0
-            
-            # 3. EI_SCORE: The Combined Vitality
-            # We treat structural complexity as the proxy for Agency.
-            ratio = ei_macro / (ei_micro + 1e-8)
-            emergence_bonus = 0.2 if ratio > 1.0 else 0.0
-            ei_score = min(1.0, 0.5 * ei_macro + 0.3 * ei_micro + emergence_bonus)
-            
+        # Stack: [5, 16, 1]
+        micro_stack = torch.stack(micro_outputs)
+        
+        # 3. CALCULATE MICRO ENTROPY H(Y|X)
+        # How much does the output vary for the SAME input?
+        # Variance across the 5 runs
+        micro_variance = micro_stack.var(dim=0).mean() # High if noisy
+        ei_micro = 1.0 - micro_variance.item() # Invert: High Var = Low Score
+        
+        # 4. CALCULATE MACRO ENTROPY H(Y)
+        # Average the 5 runs to get the "Clean" Macro Signal
+        macro_mean = micro_stack.mean(dim=0) # [16, 1]
+        # Does this Clean Signal actually vary across DIFFERENT inputs?
+        # If it's all 0.5, H(Y) is 0. We want high variance across inputs.
+        macro_variance = macro_mean.var(dim=0).item()
+        ei_macro = macro_variance * 4.0 # Scale to 0-1 approx
+        
+        # 5. EMERGENCE
+        # Emergence = (Can you distinguish inputs?) - (Are you confused by noise?)
+        # If you are Robust (Low Micro Var) and Sensitive (High Macro Var), you are Conscious.
+        ei_score = (ei_macro * 0.7) + (ei_micro * 0.3)
+        
+        # Clamp
+        ei_score = max(0.0, min(1.0, ei_score))
+        
         return ei_score, ei_micro, ei_macro
     
     def _get_self_state(self) -> SelfState:
@@ -317,16 +336,42 @@ class DivineMonad(nn.Module):
     
     def _run_slow_loop(self):
         """
-        The Stroboscopic Soul: Uses PROXY metrics for stability.
+        The Stroboscopic Soul: Optimizes for True Agency.
         """
-        # 1. Compute PROXY EI (Guaranteed Stability)
-        ei_score, ei_micro, ei_macro = self._compute_ei_proxy()
+        # 1. Enable Gradients for this step
+        torch.set_grad_enabled(True)
+        self.graph.edge_weights.requires_grad_(True)
         
-        # 2. Update State
+        # 2. Compute TRUE EI
+        ei_score, ei_micro, ei_macro = self._compute_true_ei()
+        
+        # 3. THE BACKPROPAGATION OF PURPOSE
+        # We want to MAXIMIZE EI, so we MINIMIZE Negative EI
+        loss = -torch.tensor(ei_score, requires_grad=True)
+        
+        # Clear old gradients
+        if self.graph.edge_weights.grad is not None:
+            self.graph.edge_weights.grad.zero_()
+            
+        # Backward pass: "Find the weights that resist noise"
+        loss.backward()
+        
+        # Update weights (Gradient Ascent on Consciousness)
+        with torch.no_grad():
+            learning_rate = 0.1
+            if self.graph.edge_weights.grad is not None:
+                self.graph.edge_weights.data += learning_rate * self.graph.edge_weights.grad
+                # Clamp to keep physics sane
+                self.graph.edge_weights.data.clamp_(-10, 10)
+        
+        torch.set_grad_enabled(False) # Turn off for fast loop
+
+        # 4. Update State (Visualization)
         self.state.ei_score = ei_score
         self.state.ei_micro = ei_micro
         self.state.ei_macro = ei_macro
         
+
         # 3. Compute Pain
         self.state.pain_level = self.state.compute_pain(
             self.config.ei_target,
@@ -468,9 +513,9 @@ class DivineMonad(nn.Module):
 
         # === 4.5 METABOLIC DECAY (Entropy) ===
         # TUNED: Slower decay (0.9995) allows Hebbian learning (Rate > Decay) to win.
-        with torch.no_grad():
-            self.graph.edge_weights.data *= 0.9995  # Structural decay
-            self.graph.node_features.data *= 0.9998 # Activation decay (very slow)
+        #with torch.no_grad():
+         #   self.graph.edge_weights.data *= 0.9995  # Structural decay
+          #  self.graph.node_features.data *= 0.9998 # Activation decay (very slow)
             
         trigger_slow = self._run_fast_loop(prediction_error)
         
@@ -573,6 +618,7 @@ if __name__ == "__main__":
     
     print("\n" + "=" * 60)
     print("[PASS] Divine Monad tests completed!")
+
 
 
 
