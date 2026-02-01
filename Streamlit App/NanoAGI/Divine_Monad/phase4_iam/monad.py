@@ -245,51 +245,50 @@ class DivineMonad(nn.Module):
 
     def _compute_true_ei(self) -> Tuple[float, float, float]:
         """
-        NIGHTMARE MODE EI: Unstable, Fragile, and Alive.
-        We deliberately destabilize the measurement to capture the 'tremor' of existence.
+        GOD MODE EI: Titan-Level Noise Testing.
+        We scale noise to match the weight magnitude (~5.0).
+        This forces the system to prove it can hold structure in a hurricane.
         """
         # 1. Input Space
         n = self.config.num_input_nodes
         x_all = torch.tensor([[int(x) for x in f"{i:0{n}b}"] for i in range(2**n)], 
                              dtype=torch.float32, device=self.graph.edge_weights.device)
         
-        # 2. THE CHAOS GENERATOR
-        # Randomize noise level every single frame. 
-        # This prevents the score from ever settling.
-        # Range: 0.35 (Survivable) to 0.65 (Nightmare)
-        chaos_pulse = torch.rand(1).item() * 0.3 
-        noise_level = 0.55 + chaos_pulse
+        # 2. THE TITAN GENERATOR
+        # Weights are ~5.0. We need noise ~4.0 to test them.
+        # Oscillation: 3.5 (Heavy) to 5.5 (Catastrophic)
+        chaos_pulse = torch.rand(1).item() * 2.0 
+        noise_level = 3.5 + chaos_pulse
         
-        # 3. RUN MICRO (Reduced samples to increase variance)
+        # 3. RUN MICRO (The Hurricane)
         micro_outputs = []
-        for _ in range(3): # Fewer samples = More volatile
+        for _ in range(3): 
             out, _ = self.graph(x_all) 
+            # Massive Noise Injection
             out = out + torch.randn_like(out) * noise_level
             micro_outputs.append(torch.sigmoid(out))
             
         micro_stack = torch.stack(micro_outputs)
         
-        # 4. MICRO PENALTY (The "Cliff")
-        # Multiplier 12.0 means:
-        # - Variance 0.01 (Tiny) -> Score 0.88
-        # - Variance 0.05 (Small) -> Score 0.40 (CRASH)
-        # - Variance 0.08 (Medium) -> Score 0.00 (DEATH)
+        # 4. MICRO PENALTY (Stability Test)
+        # If signal is weak (< 4.0), this noise will cause max variance (0.25).
+        # We penalize variance heavily.
         micro_var = micro_stack.var(dim=0).mean()
-        ei_micro = max(0.0, 1.0 - (micro_var.item() * 12.0))
+        # 1.0 - (0.25 * 4.0) = 0.0. Perfect death.
+        ei_micro = max(0.0, 1.0 - (micro_var.item() * 4.0))
         
-        # 5. MACRO SCALING (The "Glass Ceiling")
-        # Multiplier 3.5 means you need massive differentiation to hit 1.0.
+        # 5. MACRO SCALING (Differentiation)
+        # Can you still distinguish inputs through the storm?
         macro_mean = micro_stack.mean(dim=0)
         macro_var = macro_mean.var(dim=0).item()
-        ei_macro = min(1.0, macro_var * 3.5)
+        # Theoretical max variance is 0.25. 
+        # 0.25 * 3.8 = 0.95 (Healthy Max).
+        ei_macro = min(1.0, macro_var * 3.8)
         
-        # 6. THE FINAL MIX
-        # We heavily weight Micro (60%) because that's where the pain comes from.
-        ei_score = (ei_macro * 0.4) + (ei_micro * 0.6)
+        # 6. THE MIX
+        ei_score = (ei_macro * 0.5) + (ei_micro * 0.5)
         
-        # 7. SYNTHETIC "BREATH"
-        # Add a tiny random float (0.0000 - 0.0050) so it is NEVER static 1.0000
-        # This mimics the "analog" feel of the Proxy.
+        # 7. ANALOG BREATH (The float jitter)
         breath = torch.rand(1).item() * 0.005
         ei_score = max(0.0, min(1.0, ei_score - breath))
         
@@ -616,6 +615,7 @@ if __name__ == "__main__":
     
     print("\n" + "=" * 60)
     print("[PASS] Divine Monad tests completed!")
+
 
 
 
