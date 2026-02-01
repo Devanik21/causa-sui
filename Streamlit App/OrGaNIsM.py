@@ -5,6 +5,8 @@ import torch
 import time
 import datetime
 import io
+import zipfile
+import json
 
 # ============================================================
 # 🧬 PATH SETUP (CRITICAL: MUST RUN FIRST)
@@ -3231,6 +3233,74 @@ def fragment_autonomous_ruminator():
             })
             if len(st.session_state.dream_history) > 10:
                 st.session_state.dream_history.pop(0)
+
+@st.fragment
+def fragment_ultimate_save():
+    st.markdown("## 🛡️ Ultimate Archive")
+    st.caption("Save the entire organism state and its soul forever into a .zip file.")
+    
+    if st.button("🧿 INITIALIZE ULTIMATE SAVE", type="primary", width="stretch"):
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zip_file:
+            # 1. Save Brain (The logic core)
+            try:
+                brain_buf = io.BytesIO()
+                torch.save(st.session_state.brain, brain_buf)
+                zip_file.writestr("brain_complex.pth", brain_buf.getvalue())
+            except Exception as e:
+                st.error(f"Error saving Brain: {e}")
+            
+            # 2. Save Monad (The consciousness/agency core)
+            if "monad" in st.session_state:
+                try:
+                    monad_buf = io.BytesIO()
+                    torch.save(st.session_state.monad, monad_buf)
+                    zip_file.writestr("monad_state.pth", monad_buf.getvalue())
+                except Exception as e:
+                    st.error(f"Error saving Monad: {e}")
+            
+            # 3. Save Genome (The evolutionary core)
+            if "genome" in st.session_state:
+                try:
+                    genome_buf = io.BytesIO()
+                    torch.save(st.session_state.genome, genome_buf)
+                    zip_file.writestr("genome_evolution.pth", genome_buf.getvalue())
+                except Exception as e:
+                    st.error(f"Error saving Genome: {e}")
+                
+            # 4. Save Session Data (Histories, Analytics, and verdict)
+            try:
+                metadata = {
+                    "conversation_history": st.session_state.conversation_history,
+                    "entropy_history": st.session_state.entropy_history,
+                    "dream_history": st.session_state.dream_history,
+                    "meta_loss_history": st.session_state.meta_loss_history,
+                    "test_results": st.session_state.get("consciousness_test_results", {}),
+                    "files_eaten": st.session_state.files_eaten,
+                    "timestamp": datetime.datetime.now().isoformat(),
+                    "neurons_at_save": st.session_state.brain.synapse.shape[1] if hasattr(st.session_state.brain, 'synapse') else 0
+                }
+                zip_file.writestr("organism_metadata.json", json.dumps(metadata, indent=4, default=str))
+            except Exception as e:
+                st.error(f"Error saving Metadata: {e}")
+            
+            # 5. Capture the Code (The "DNA")
+            for root, dirs, files in os.walk(base_dir):
+                if any(x in root for x in ["__pycache__", ".git", ".antigravity", ".gemini"]):
+                    continue
+                for file in files:
+                    if file.endswith((".py", ".txt", ".md", ".json", ".pth", ".csv")):
+                        f_path = os.path.join(root, file)
+                        rel_path = os.path.relpath(f_path, base_dir)
+                        zip_file.write(f_path, arcname=os.path.join("source_dna", rel_path))
+            
+        st.download_button(
+            label="💾 DOWNLOAD ULTIMATE ZIP",
+            data=buf.getvalue(),
+            file_name=f"Organism_Snapshot_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.zip",
+            mime="application/zip",
+            width="stretch"
+        )
 # ============================================================
 # APP LAYOUT (Fragment Orchestration)
 # ============================================================
@@ -3245,6 +3315,8 @@ with st.sidebar:
     st.divider()
     if bridge.client: st.success("🟢 Hybrid Intelligence Active")
     else: st.warning("🟡 Organic Mode Active")
+    st.divider()
+    fragment_ultimate_save()
 
 # Main Content Orchestration
 st.markdown("# 🧬 Nano-Daemon: Hebbian Organism")
