@@ -2114,7 +2114,7 @@ def fragment_consciousness_test_section():
                 phase_labels = []
                 
                 for phase in results["phases"]:
-                    phase_name = phase["phase"]
+                    phase_name = phase.get("phase", phase.get("name", str(phase.keys())))
                     # Get actual data points from this phase
                     if phase_name == "Calibration":
                         ei_timeseries.extend([phase["initial_ei"], phase["final_ei"]])
