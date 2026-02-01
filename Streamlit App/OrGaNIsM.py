@@ -37,10 +37,24 @@ try:
 except ImportError:
     RSS_AVAILABLE = False
 
+
+# ============================================================
+# 🧹 HOT RELOAD EXORCIST (Fixes KeyError on GitHub Updates)
+# ============================================================
+# This forces Python to forget your custom modules so they strictly re-import
+# when Streamlit re-runs. This prevents "zombie" module states.
+import sys
+for module_key in list(sys.modules.keys()):
+    # Add any other custom folders here (e.g., 'core', 'nano_agi')
+    if module_key.startswith("Divine_Monad") or module_key.startswith("core"):
+        del sys.modules[module_key]
+
+
+
 # --- PAGE CONFIG (Must be first Streamlit command for Streamlit UI) ---
 st.set_page_config(
-    page_title="🧬 Nano-Daemon: Hebbian Organism",
-    page_icon="🧠",
+    page_title="Hebbian Organism",
+    page_icon="🧬",
     layout="wide",
     initial_sidebar_state="expanded"
 )
