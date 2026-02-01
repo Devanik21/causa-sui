@@ -38,16 +38,60 @@ except ImportError:
     RSS_AVAILABLE = False
 
 
-# ============================================================
-# 🧹 HOT RELOAD EXORCIST (Fixes KeyError on GitHub Updates)
-# ============================================================
-# This forces Python to forget your custom modules so they strictly re-import
-# when Streamlit re-runs. This prevents "zombie" module states.
+import os
 import sys
-for module_key in list(sys.modules.keys()):
-    # Add any other custom folders here (e.g., 'core', 'nano_agi')
-    if module_key.startswith("Divine_Monad") or module_key.startswith("core"):
-        del sys.modules[module_key]
+
+# ============================================================
+# 🧬 PATH SETUP (CRITICAL: MUST RUN FIRST)
+# ============================================================
+# We define the environment first so imports can be found.
+base_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(base_dir)
+grandparent_dir = os.path.dirname(parent_dir)
+
+# Define where your custom modules live (The NanoAGI folder)
+nano_agi_paths = [
+    os.path.join(base_dir, "NanoAGI"),
+    os.path.join(parent_dir, "NanoAGI"),
+    os.path.join(grandparent_dir, "Streamlit App", "NanoAGI"),
+    base_dir, # Fallback for local dev
+    parent_dir 
+]
+
+# Add these to sys.path if missing
+for path in nano_agi_paths:
+    if os.path.isdir(path) and path not in sys.path:
+        sys.path.insert(0, path)
+
+# ============================================================
+# ☢️ NUCLEAR HOT RELOAD EXORCIST (THE FINAL FIX)
+# ============================================================
+# This forces Python to completely forget your custom brain modules
+# on every reload. This solves the "KeyError" and "Zombie State".
+
+# List of ALL custom module prefixes in your repo
+CUSTOM_MODULES = [
+    "Divine_Monad",       # The main package
+    "core",               # core.py
+    "plasticity_network", # plasticity_network.py
+    "meta_learner",       # meta_learner.py
+    "NanoAGI"             # Just in case accessed as a package
+]
+
+# Only purge if Streamlit is already running (Hot Reload)
+if "streamlit" in sys.modules:
+    # Create a list of keys to delete (avoid modifying dict while iterating)
+    keys_to_purge = []
+    for key in list(sys.modules.keys()):
+        # Check if the module starts with any of our custom names
+        for target in CUSTOM_MODULES:
+            if key == target or key.startswith(target + "."):
+                keys_to_purge.append(key)
+                break
+
+    # Execute Order 66 (Delete them)
+    for key in keys_to_purge:
+        del sys.modules[key]
 
 
 
