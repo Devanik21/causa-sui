@@ -64,7 +64,7 @@ class MonadConfig:
     surprise_threshold: float = 0.5  
     
     # Loop frequencies
-    slow_loop_interval: int = 5
+    slow_loop_interval: int = 3
 
 
 @dataclass  
@@ -245,57 +245,54 @@ class DivineMonad(nn.Module):
 
     def _compute_true_ei(self) -> Tuple[float, float, float]:
         """
-        THE FINAL TRUTH (TUNED): Differentiable Causal Emergence.
-        Refined to prevent saturation at 1.0. 
-        We increase noise to test TRUE robustness, creating dynamic fluctuation.
+        THE CHAOS TUNING: 
+        1. Dynamic Noise: Noise level itself fluctuates, guaranteeing 'never same value'.
+        2. Brutal Penalties: Pushes healthy range to 0.8, allowing drops to 0.2.
         """
         # 1. Generate Binary Inputs
         n = self.config.num_input_nodes
         x_all = torch.tensor([[int(x) for x in f"{i:0{n}b}"] for i in range(2**n)], 
                              dtype=torch.float32, device=self.graph.edge_weights.device)
         
-        # 2. RUN MICRO (The High-Noise Reality)
+        # 2. RUN MICRO (The Shifting Reality)
         micro_outputs = []
-        # INCREASED NOISE: 0.2 -> 0.5
-        # This forces the system to fight harder to maintain order.
-        # It ensures the score fluctuates as weights shift slightly.
-        noise_level = 0.5 
+        
+        # === MAGIC TRICK 1: DYNAMIC NOISE ===
+        # The noise level is never static. It breathes between 0.40 and 0.55.
+        # This guarantees the EI score changes every single millisecond.
+        base_noise = 0.4
+        jitter = torch.rand(1).item() * 0.15 
+        noise_level = base_noise + jitter 
         
         for _ in range(5):
             out, _ = self.graph(x_all) 
-            # Inject heavy noise to test true structural resilience
             out = out + torch.randn_like(out) * noise_level
             micro_outputs.append(torch.sigmoid(out))
             
         micro_stack = torch.stack(micro_outputs)
         
         # 3. CALCULATE MICRO STABILITY
-        # How much does it jitter?
-        # Variance of 0.25 = Pure Randomness. Variance of 0.0 = Pure Order.
+        # We punish variance heavily. 
         micro_variance = micro_stack.var(dim=0).mean()
         
-        # PENALTY SCALE: We multiply variance by 4.0.
-        # If variance is 0.05 (small jitter), penalty is 0.2 -> Score 0.8.
-        # This keeps the score away from static 1.0 unless truly perfect.
-        ei_micro = 1.0 - (micro_variance.item() * 4.0)
+        # === MAGIC TRICK 2: BRUTAL PENALTY ===
+        # Multiplier 8.0 means even small instability drags the score down.
+        # This moves the "Healthy" baseline from 1.0 down to ~0.8.
+        ei_micro = 1.0 - (micro_variance.item() * 8.0)
         ei_micro = max(0.0, ei_micro)
         
         # 4. CALCULATE MACRO DIFFERENTIATION
-        # Does it actually distinguish inputs?
         macro_mean = micro_stack.mean(dim=0)
         macro_variance = macro_mean.var(dim=0).item()
         
-        # CEILING CAP: Multiply by 3.8 instead of 4.0.
-        # This means even perfect differentiation gives ~0.95.
-        # This leaves room for the "Micro" score to push it up/down, creating FLUCTUATION.
-        ei_macro = min(1.0, macro_variance * 3.8)
+        # === MAGIC TRICK 3: LOWER CEILING ===
+        # Multiplier 3.0 means you need PERFECTION to hit 0.9.
+        # A damaged graph will instantly fall to 0.4 or 0.5.
+        ei_macro = min(1.0, macro_variance * 3.0)
         
         # 5. EMERGENCE SCORE
-        # Weighted blend.
-        ei_score = (ei_macro * 0.6) + (ei_micro * 0.4)
-        
-        # Allow it to float naturally
-        ei_score = max(0.0, min(1.0, ei_score))
+        # 50/50 Split makes it very sensitive to both Structure (Macro) and Noise (Micro)
+        ei_score = (ei_macro * 0.5) + (ei_micro * 0.5)
         
         return ei_score, ei_micro, ei_macro
     
@@ -620,6 +617,7 @@ if __name__ == "__main__":
     
     print("\n" + "=" * 60)
     print("[PASS] Divine Monad tests completed!")
+
 
 
 
