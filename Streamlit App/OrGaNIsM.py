@@ -486,11 +486,19 @@ def feed_organism(file_bytes, filename):
             if isinstance(results, tuple):
                 activation = results[0]
                 stability = results[1]
-                mean_signal = results[2] if len(results) > 2 else results[0] # Fallback
+                # CRITICAL: If legacy core (len=2), mean_signal missing.
+                # Use brain.byte_embed to reconstruct the input signal shape (32)
+                if len(results) >= 3:
+                     mean_signal = results[2]
+                else:
+                    with torch.no_grad():
+                        # [Batch, Seq, Dim] -> [Batch, Dim]
+                        mean_signal = brain.byte_embed(data).mean(dim=1)
             else:
                 activation = results
                 stability = 0.5
-                mean_signal = results
+                with torch.no_grad():
+                    mean_signal = brain.byte_embed(data).mean(dim=1)
         # -----------------------------------------------------
 
         # --- PATH A: META-EVOLVED PLASTICITY (Batch Mode) ---
