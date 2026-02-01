@@ -49,6 +49,72 @@ class TopologicalMutator:
         """
         self.epsilon = epsilon
     
+    def hebbian_evolve(self, graph, intensity: float = 1.0):
+        """
+        THE LIVING TOPOLOGY: Hebbian Structural Plasticity.
+        Replaces random mutation with energy-driven morphogenesis.
+        
+        Args:
+            intensity: 0.5 (Calm) to 2.0 (Aggressive). Modulates growth thresholds.
+        """
+        with torch.no_grad():
+            # === 1. VITALITY METRICS ===
+            # Calculate 'Energy' of every node based on activation magnitude
+            # High Energy = High Information flow.
+            vitality = graph.node_features.abs().mean(dim=1)  # [Num_Nodes]
+            
+            # === 2. SYNAPTOGENESIS (Neurons that fire together, wire together) ===
+            # Compute Cosine Similarity between ALL nodes
+            norm_feats = torch.nn.functional.normalize(graph.node_features, p=2, dim=1)
+            # Correlation Matrix: (N, D) @ (D, N) -> (N, N)
+            similarity = torch.mm(norm_feats, norm_feats.t())
+            
+            # Mask out existing edges (we only want NEW connections)
+            # We create a temporary adjacency mask
+            existing_edges = torch.zeros_like(similarity, dtype=torch.bool)
+            existing_edges[graph.edge_index[0], graph.edge_index[1]] = True
+            
+            # Find candidate pairs: High Similarity (>0.8) AND No Connection
+            # 'intensity' lowers the barrier to form new connections
+            threshold = 0.95 / intensity 
+            candidates = (similarity > threshold) & (~existing_edges) & (torch.eye(graph.get_num_nodes(), device=similarity.device) == 0)
+            srcs, dsts = torch.nonzero(candidates, as_tuple=True)
+            
+            if len(srcs) > 0:
+                # Grow the STRONGEST potential synapse
+                best_idx = torch.argmax(similarity[srcs, dsts])
+                u, v = srcs[best_idx].item(), dsts[best_idx].item()
+                # The synapse forms with a weight equal to their correlation (Hebe's Law)
+                self.add_edge(graph, u, v, init_weight=similarity[u, v].item() * 2.0)
+                
+            # === 3. MITOSIS (Cell Division under Stress) ===
+            # If a node is "burning hot" (Vitality > Limit), it splits to share the load.
+            # This creates specialized clusters automatically.
+            stress_limit = 2.5 / intensity
+            overloaded_nodes = torch.nonzero(vitality > stress_limit).flatten()
+            
+            if len(overloaded_nodes) > 0:
+                # The most stressed node splits first
+                target_node = overloaded_nodes[torch.argmax(vitality[overloaded_nodes])].item()
+                # 'grow_node' here effectively acts as mitosis if linked to parent
+                self.grow_node(graph, parent_id=target_node) 
+                
+            # === 4. APOPTOSIS (Pruning of Dead Matter) ===
+            # If a node has no energy (Vitality ~ 0), it is metabolically expensive waste.
+            # We prune it to save compute for the living nodes.
+            survival_threshold = 0.01 * intensity
+            dead_nodes = torch.nonzero(vitality < survival_threshold).flatten()
+            
+            # Protect Input/Output nodes from death
+            protected_indices = set(range(graph.num_input_nodes))
+            protected_indices.add(graph.get_num_nodes() - 1) # Output node
+            
+            for node_idx in dead_nodes:
+                if node_idx.item() not in protected_indices:
+                    self.prune_node(graph, node_idx.item())
+                    break # Prune only one per step to maintain stability
+
+    
     def grow_node(
         self,
         net: nn.Module,
@@ -419,3 +485,4 @@ if __name__ == "__main__":
         print("   [WARN] No gradients after mutation!")
     
     print("\n[PASS] TopologicalMutator test completed!")
+
