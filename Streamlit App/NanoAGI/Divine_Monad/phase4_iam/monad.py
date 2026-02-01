@@ -132,12 +132,6 @@ class DivineMonad(nn.Module):
     """
     
     def __init__(self, config: Optional[MonadConfig] = None):
-        """
-        Initialize the Divine Monad.
-        
-        Args:
-            config: Configuration dataclass
-        """
         super().__init__()
         self.config = config or MonadConfig()
         
@@ -150,9 +144,10 @@ class DivineMonad(nn.Module):
             num_output_nodes=self.config.num_output_nodes
         )
         
-        # === PHASE 2: TOPOLOGY MUTATOR ===
-        self.mutator.hebbian_evolve(self.graph)
+        # === PHASE 2: TOPOLOGY MUTATOR (INITIALIZE HERE) ===
+        self.mutator = TopologicalMutator() # <--- THIS LINE WAS MISSING
         
+
         # === PHASE 3: THE MIND (Holographic Memory) ===
         # Note: Using smaller holo_dim for efficiency in integration
         self.memory = NeuralKV(
@@ -625,6 +620,7 @@ if __name__ == "__main__":
     
     print("\n" + "=" * 60)
     print("[PASS] Divine Monad tests completed!")
+
 
 
 
