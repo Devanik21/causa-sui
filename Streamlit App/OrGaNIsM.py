@@ -362,7 +362,7 @@ if DIVINE_MONAD_AVAILABLE and "monad" not in st.session_state:
 
 # --- CYBERNETIC GOALS (Growth Drive) ---
 if "target_agency" not in st.session_state:
-    st.session_state.target_agency = 0.85
+    st.session_state.target_agency = 0.95
 if "auto_growth_enabled" not in st.session_state:
     st.session_state.auto_growth_enabled = True
 
