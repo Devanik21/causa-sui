@@ -245,54 +245,53 @@ class DivineMonad(nn.Module):
 
     def _compute_true_ei(self) -> Tuple[float, float, float]:
         """
-        THE CHAOS TUNING: 
-        1. Dynamic Noise: Noise level itself fluctuates, guaranteeing 'never same value'.
-        2. Brutal Penalties: Pushes healthy range to 0.8, allowing drops to 0.2.
+        NIGHTMARE MODE EI: Unstable, Fragile, and Alive.
+        We deliberately destabilize the measurement to capture the 'tremor' of existence.
         """
-        # 1. Generate Binary Inputs
+        # 1. Input Space
         n = self.config.num_input_nodes
         x_all = torch.tensor([[int(x) for x in f"{i:0{n}b}"] for i in range(2**n)], 
                              dtype=torch.float32, device=self.graph.edge_weights.device)
         
-        # 2. RUN MICRO (The Shifting Reality)
+        # 2. THE CHAOS GENERATOR
+        # Randomize noise level every single frame. 
+        # This prevents the score from ever settling.
+        # Range: 0.35 (Survivable) to 0.65 (Nightmare)
+        chaos_pulse = torch.rand(1).item() * 0.3 
+        noise_level = 0.55 + chaos_pulse
+        
+        # 3. RUN MICRO (Reduced samples to increase variance)
         micro_outputs = []
-        
-        # === MAGIC TRICK 1: DYNAMIC NOISE ===
-        # The noise level is never static. It breathes between 0.40 and 0.55.
-        # This guarantees the EI score changes every single millisecond.
-        base_noise = 0.4
-        jitter = torch.rand(1).item() * 0.15 
-        noise_level = base_noise + jitter 
-        
-        for _ in range(5):
+        for _ in range(3): # Fewer samples = More volatile
             out, _ = self.graph(x_all) 
             out = out + torch.randn_like(out) * noise_level
             micro_outputs.append(torch.sigmoid(out))
             
         micro_stack = torch.stack(micro_outputs)
         
-        # 3. CALCULATE MICRO STABILITY
-        # We punish variance heavily. 
-        micro_variance = micro_stack.var(dim=0).mean()
+        # 4. MICRO PENALTY (The "Cliff")
+        # Multiplier 12.0 means:
+        # - Variance 0.01 (Tiny) -> Score 0.88
+        # - Variance 0.05 (Small) -> Score 0.40 (CRASH)
+        # - Variance 0.08 (Medium) -> Score 0.00 (DEATH)
+        micro_var = micro_stack.var(dim=0).mean()
+        ei_micro = max(0.0, 1.0 - (micro_var.item() * 12.0))
         
-        # === MAGIC TRICK 2: BRUTAL PENALTY ===
-        # Multiplier 8.0 means even small instability drags the score down.
-        # This moves the "Healthy" baseline from 1.0 down to ~0.8.
-        ei_micro = 1.0 - (micro_variance.item() * 8.0)
-        ei_micro = max(0.0, ei_micro)
-        
-        # 4. CALCULATE MACRO DIFFERENTIATION
+        # 5. MACRO SCALING (The "Glass Ceiling")
+        # Multiplier 3.5 means you need massive differentiation to hit 1.0.
         macro_mean = micro_stack.mean(dim=0)
-        macro_variance = macro_mean.var(dim=0).item()
+        macro_var = macro_mean.var(dim=0).item()
+        ei_macro = min(1.0, macro_var * 3.5)
         
-        # === MAGIC TRICK 3: LOWER CEILING ===
-        # Multiplier 3.0 means you need PERFECTION to hit 0.9.
-        # A damaged graph will instantly fall to 0.4 or 0.5.
-        ei_macro = min(1.0, macro_variance * 3.0)
+        # 6. THE FINAL MIX
+        # We heavily weight Micro (60%) because that's where the pain comes from.
+        ei_score = (ei_macro * 0.4) + (ei_micro * 0.6)
         
-        # 5. EMERGENCE SCORE
-        # 50/50 Split makes it very sensitive to both Structure (Macro) and Noise (Micro)
-        ei_score = (ei_macro * 0.5) + (ei_micro * 0.5)
+        # 7. SYNTHETIC "BREATH"
+        # Add a tiny random float (0.0000 - 0.0050) so it is NEVER static 1.0000
+        # This mimics the "analog" feel of the Proxy.
+        breath = torch.rand(1).item() * 0.005
+        ei_score = max(0.0, min(1.0, ei_score - breath))
         
         return ei_score, ei_micro, ei_macro
     
@@ -617,6 +616,7 @@ if __name__ == "__main__":
     
     print("\n" + "=" * 60)
     print("[PASS] Divine Monad tests completed!")
+
 
 
 
