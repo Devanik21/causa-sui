@@ -254,7 +254,7 @@ class DivineMonad(nn.Module):
         # 2. TITAN NOISE (Unchanged)
         # We keep the massive storm to ensure variance exists.
         chaos_pulse = torch.rand(1).item() * 1.5 
-        noise_level = 4.5 + chaos_pulse 
+        noise_level = 4.0 + chaos_pulse 
         
         # 3. RUN MICRO (3 Samples)
         micro_outputs = []
@@ -271,7 +271,7 @@ class DivineMonad(nn.Module):
         
         # Penalty 6.0: If var is 0.15 (typical), score drops to 0.1.
         # This makes it FIGHT for stability.
-        ei_micro = max(0.0, 1.0 - (micro_var.item() * 6.0))
+        ei_micro = max(0.0, 1.0 - (micro_var.item() * 5.0))
         
         # 5. MACRO SCALING (Lowered Ceiling)
         macro_mean = micro_stack.mean(dim=0)
@@ -279,12 +279,12 @@ class DivineMonad(nn.Module):
         
         # Multiplier 3.2: Max theoretical variance 0.25 -> 0.8 Score.
         # This cap ensures you can almost NEVER reach 1.0 from this side.
-        ei_macro = min(1.0, macro_var * 3.2)
+        ei_macro = min(1.0, macro_var * 3)
         
         # 6. THE FINAL MIX
         # Weighted 60% Micro (Stability) / 40% Macro (differentiation)
         # Max Score = (0.6 * 1.0) + (0.4 * 0.8) = 0.92 (Absolute Maximum)
-        ei_score = (ei_macro * 0.4) + (ei_micro * 0.6)
+        ei_score = (ei_macro * 0.35) + (ei_micro * 0.6)
         
         # 7. ANALOG BREATH
         breath = torch.rand(1).item() * 0.01
@@ -623,6 +623,7 @@ if __name__ == "__main__":
     
     print("\n" + "=" * 60)
     print("[PASS] Divine Monad tests completed!")
+
 
 
 
