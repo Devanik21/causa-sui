@@ -238,25 +238,24 @@ class DivineMonad(nn.Module):
         self.state.prediction_error = 0.0
         self.action_log = ["STATE_RESET"]
 
-    def _compute_true_ei(self) -> Tuple[float, float, float]:
+    def _compute_true_ei(self) -> Tuple[torch.Tensor, float, float]:
         """
-        NIGHTMARE RANGE EI: Calibrated for 0.2 - 0.8 Operation.
-        Target:
-            - Damaged: 0.2 - 0.4
-            - Healthy: 0.5 - 0.75
-            - God Tier: > 0.85 (Extremely Rare)
+        DIFFERENTIABLE NIGHTMARE EI: Keeps the gradient graph alive.
+        Returns:
+            ei_score: Tensor (Connected to graph)
+            micro_val: float (For logging only)
+            macro_val: float (For logging only)
         """
         # 1. Input Space
         n = self.config.num_input_nodes
         x_all = torch.tensor([[int(x) for x in f"{i:0{n}b}"] for i in range(2**n)], 
                              dtype=torch.float32, device=self.graph.edge_weights.device)
         
-        # 2. TITAN NOISE (Unchanged)
-        # We keep the massive storm to ensure variance exists.
-        chaos_pulse = torch.rand(1).item() * 1.5 
+        # 2. TITAN NOISE
+        chaos_pulse = torch.rand(1, device=self.graph.edge_weights.device) * 1.5 
         noise_level = 4.0 + chaos_pulse 
         
-        # 3. RUN MICRO (3 Samples)
+        # 3. RUN MICRO (Keep everything as Tensors)
         micro_outputs = []
         for _ in range(3): 
             out, _ = self.graph(x_all) 
@@ -265,32 +264,30 @@ class DivineMonad(nn.Module):
             
         micro_stack = torch.stack(micro_outputs)
         
-        # 4. MICRO PENALTY (Fixing the 1.3 Bug)
-        # We assume variance will be around 0.1 to 0.2 under this noise.
+        # 4. MICRO PENALTY (Differentiable)
         micro_var = micro_stack.var(dim=0).mean()
         
-        # Penalty 6.0: If var is 0.15 (typical), score drops to 0.1.
-        # This makes it FIGHT for stability.
-        ei_micro = max(0.0, 1.0 - (micro_var.item() * 5.0))
+        # Use torch operations, not python math
+        ei_micro = 1.0 - (micro_var * 6.0)
+        ei_micro = torch.clamp(ei_micro, min=0.0) # torch.clamp preserves gradient
         
-        # 5. MACRO SCALING (Lowered Ceiling)
+        # 5. MACRO SCALING (Differentiable)
         macro_mean = micro_stack.mean(dim=0)
-        macro_var = macro_mean.var(dim=0).item()
+        macro_var = macro_mean.var(dim=0) # No .item()!
         
-        # Multiplier 3.2: Max theoretical variance 0.25 -> 0.8 Score.
-        # This cap ensures you can almost NEVER reach 1.0 from this side.
-        ei_macro = min(1.0, macro_var * 3)
+        ei_macro = macro_var * 3.2
+        ei_macro = torch.clamp(ei_macro, max=1.0)
         
         # 6. THE FINAL MIX
-        # Weighted 60% Micro (Stability) / 40% Macro (differentiation)
-        # Max Score = (0.6 * 1.0) + (0.4 * 0.8) = 0.92 (Absolute Maximum)
-        ei_score = (ei_macro * 0.35) + (ei_micro * 0.6)
+        ei_score = (ei_macro * 0.4) + (ei_micro * 0.6)
         
-        # 7. ANALOG BREATH
-        breath = torch.rand(1).item() * 0.01
-        ei_score = max(0.0, min(1.0, ei_score - breath))
+        # 7. ANALOG BREATH (Differentiable Noise)
+        breath = torch.rand(1, device=self.graph.edge_weights.device) * 0.01
+        ei_score = ei_score - breath
+        ei_score = torch.clamp(ei_score, min=0.0, max=1.0)
         
-        return ei_score, ei_micro, ei_macro
+        # Return Tensor for optimization, floats for logging
+        return ei_score, ei_micro.item(), ei_macro.item()
     
     def _get_self_state(self) -> SelfState:
         """Convert current MonadState to SelfState for introspection."""
@@ -328,34 +325,32 @@ class DivineMonad(nn.Module):
     
     def _run_slow_loop(self):
         """
-        The Stroboscopic Soul: Optimizes for True Agency AND Physical Evolution.
+        The Stroboscopic Soul: Optimizes for True Agency.
         """
-        # --- 1. THE BIOLOGICAL CLOCK (ADD THIS) ---
-        # This makes the graph "breathe" and change shape every heartbeat.
-        # intensity=1.0 allows balanced growth and pruning.
+        # === EVOLUTION ===
         try:
-             self.mutator.hebbian_evolve(self.graph, intensity=1.0)
-             self._update_topology_metrics() # Update node/edge counts in state
+            self.mutator.hebbian_evolve(self.graph, intensity=1.0)
+            self._update_topology_metrics()
         except Exception as e:
-             self.action_log.append(f"EVO_FAIL: {e}")
+            self.action_log.append(f"EVO_ERR: {str(e)}")
 
-        # 2. Enable Gradients for this step
+        # 1. Enable Gradients
         torch.set_grad_enabled(True)
         self.graph.edge_weights.requires_grad_(True)
         
-        
-        # 2. Compute TRUE EI
-        ei_score, ei_micro, ei_macro = self._compute_true_ei()
+        # 2. Compute TRUE EI (Returns Tensor now)
+        ei_score_tensor, ei_micro, ei_macro = self._compute_true_ei()
         
         # 3. THE BACKPROPAGATION OF PURPOSE
-        # We want to MAXIMIZE EI, so we MINIMIZE Negative EI
-        loss = -torch.tensor(ei_score, requires_grad=True)
+        # We assume ei_score_tensor is ALREADY connected to the graph.
+        # We maximize EI by minimizing Negative EI.
+        loss = -ei_score_tensor 
         
         # Clear old gradients
         if self.graph.edge_weights.grad is not None:
             self.graph.edge_weights.grad.zero_()
             
-        # Backward pass: "Find the weights that resist noise"
+        # Backward pass (This will now flow back to self.graph.edge_weights)
         loss.backward()
         
         # Update weights (Gradient Ascent on Consciousness)
@@ -363,18 +358,16 @@ class DivineMonad(nn.Module):
             learning_rate = 0.1
             if self.graph.edge_weights.grad is not None:
                 self.graph.edge_weights.data += learning_rate * self.graph.edge_weights.grad
-                # Clamp to keep physics sane
                 self.graph.edge_weights.data.clamp_(-10, 10)
         
-        torch.set_grad_enabled(False) # Turn off for fast loop
+        torch.set_grad_enabled(False) 
 
-        # 4. Update State (Visualization)
-        self.state.ei_score = ei_score
+        # 4. Update State (Use .item() here strictly for display, not math)
+        self.state.ei_score = ei_score_tensor.item()
         self.state.ei_micro = ei_micro
         self.state.ei_macro = ei_macro
         
-
-        # 3. Compute Pain
+        # ... rest of your pain/repair logic ...
         self.state.pain_level = self.state.compute_pain(
             self.config.ei_target,
             self.config.pain_threshold,
@@ -383,7 +376,6 @@ class DivineMonad(nn.Module):
         
         self.state.last_slow_loop = self.state.step_count
         
-        # 4. Trigger Repair if in Pain (or if purely random/dead)
         if self.state.ei_score < 0.05 or self.state.pain_level > 0.5:
              self._trigger_repair()
     
@@ -623,6 +615,7 @@ if __name__ == "__main__":
     
     print("\n" + "=" * 60)
     print("[PASS] Divine Monad tests completed!")
+
 
 
 
