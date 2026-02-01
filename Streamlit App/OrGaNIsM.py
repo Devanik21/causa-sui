@@ -692,7 +692,7 @@ def fragment_monad_dashboard():
         """, unsafe_allow_html=True)
     
     with status_col4:
-        if st.button("🔄", key="refresh_monad_status", help="Refresh Monad Status", use_container_width=True):
+        if st.button("🔄", key="refresh_monad_status", help="Refresh Monad Status", width="stretch"):
             st.rerun()
     
     st.markdown("</div>", unsafe_allow_html=True)
@@ -1001,12 +1001,12 @@ def fragment_monad_dashboard():
             st.markdown("**🔧 Structural Directives**")
             col_in1, col_in2, col_in3 = st.columns(3)
             growth_parent = col_in1.number_input("Parent Node ID", 0, num_nodes-1, monad.graph.num_input_nodes, key="parent_id_input")
-            if col_in2.button("🌱 Execute Mitosis", use_container_width=True):
+            if col_in2.button("🌱 Execute Mitosis", width="stretch"):
                 result = monad.mutator.grow_node(monad.graph, growth_parent)
                 st.toast(result.message)
                 st.rerun()
                 
-            if col_in3.button("🔗 Add Random Edge", help="Create a new synapse", use_container_width=True):
+            if col_in3.button("🔗 Add Random Edge", help="Create a new synapse", width="stretch"):
                 import random
                 src = random.randint(0, num_nodes - 2)
                 tgt = random.randint(src + 1, num_nodes - 1)
@@ -1043,12 +1043,12 @@ def fragment_monad_dashboard():
             st.markdown("**💾 Synthetic Memory Control**")
             col_m1, col_m2 = st.columns(2)
             dmg_pct = col_m1.slider("Corruption Intensity", 0.0, 1.0, 0.3, 0.05, key="dmg_slider")
-            if col_m2.button("💥 Induce Synaptic Loss", use_container_width=True):
+            if col_m2.button("💥 Induce Synaptic Loss", width="stretch"):
                 mem.damage(dmg_pct)
                 st.toast(f"Memory loss: {dmg_pct:.0%}")
                 st.rerun()
 
-            if st.button("🗑️ Sanitize All Engrams", use_container_width=True):
+            if st.button("🗑️ Sanitize All Engrams", width="stretch"):
                 mem.clear()
                 st.rerun()
                 
@@ -2560,7 +2560,7 @@ def fragment_consciousness_test_section():
                             "background": "#0a0a0a",
                             "view": {"stroke": "#333"}
                         }
-                    }, use_container_width=True)
+                    }, width="stretch")
                     
                     # Time series overlay
                     st.markdown("""
@@ -2607,7 +2607,7 @@ def fragment_consciousness_test_section():
                             "background": "#0a0a0a",
                             "view": {"stroke": "#333"}
                         }
-                    }, use_container_width=True)
+                    }, width="stretch")
                 
                 with main_col2:
                     # Advanced metrics panel
