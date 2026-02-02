@@ -2968,6 +2968,11 @@ def fragment_sidebar_feeding():
                 stability, weight_delta = feed_organism(raw_bytes, f.name)
                 st.success(f"✅ Digested `{f.name}` | Stability: {stability:.4f} | ΔW: {weight_delta:.6f}")
 
+                   # --- TINY ADD CODE ---
+            time.sleep(0.5) # Brief pause to let the success message flash
+            st.rerun()      # <--- NUCLEAR RELOAD: Updates the Status Sidebar immediately
+            
+
 @st.fragment
 def fragment_sidebar_controls():
     st.markdown("## ⚙️ Advanced Controls")
