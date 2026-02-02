@@ -2971,15 +2971,16 @@ def fragment_sidebar_feeding():
     )
     
     if uploaded_files:
-        with st.spinner("Digesting..."):
-            for f in uploaded_files:
-                raw_bytes = f.read()
-                stability, weight_delta = feed_organism(raw_bytes, f.name)
-                st.success(f"✅ Digested `{f.name}` | Stability: {stability:.4f} | ΔW: {weight_delta:.6f}")
-
-                   # --- TINY ADD CODE ---
-            time.sleep(0.5) # Brief pause to let the success message flash
-            st.rerun()      # <--- NUCLEAR RELOAD: Updates the Status Sidebar immediately
+        if st.button("🍽️ Start Digestion", key="start_digestion_btn", use_container_width=True):
+            with st.spinner("Digesting..."):
+                for f in uploaded_files:
+                    raw_bytes = f.read()
+                    stability, weight_delta = feed_organism(raw_bytes, f.name)
+                    st.success(f"✅ Digested `{f.name}` | Stability: {stability:.4f} | ΔW: {weight_delta:.6f}")
+                
+                # --- POST-DIGESTION UPDATE ---
+                time.sleep(0.5) # Brief pause to let the success message flash
+                st.rerun()      # <--- NUCLEAR RELOAD: Updates the Status Sidebar immediately
             
 
 @st.fragment
