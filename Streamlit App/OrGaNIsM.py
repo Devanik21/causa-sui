@@ -617,49 +617,66 @@ def generate_system_dna_zip():
     def serialize_logic(obj, visited=None):
         if visited is None: visited = set()
         
-        # Prevent infinite recursion for recursive objects
+        # Prevent infinite recursion
         obj_id = id(obj)
         if obj_id in visited: return "[Circular Reference]"
         
-        # Basic types
+        # 1. Handle Types, Modules, and Functions (Not serializable)
+        if isinstance(obj, type) or hasattr(obj, "__module__") and not hasattr(obj, "__dict__"):
+            if not isinstance(obj, (int, float, str, bool, list, dict, set, tuple, torch.Tensor, np.ndarray)):
+                return f"[Non-Data: {type(obj).__name__}]"
+
+        # 2. Basic types
         if isinstance(obj, (int, float, str, bool, type(None))):
             return obj
             
-        # Torch Tensors -> List
-        if hasattr(obj, "detach") and hasattr(obj, "cpu") and hasattr(obj, "tolist"):
-            return obj.detach().cpu().tolist()
+        # 3. Torch Tensors -> List (Use explicit check to avoid unbound method error)
+        if torch.is_tensor(obj):
+            try:
+                return obj.detach().cpu().tolist()
+            except Exception:
+                return "[Unextractable Tensor]"
             
-        # Numpy arrays
+        # 4. Numpy arrays and scalars
         if isinstance(obj, np.ndarray):
             return obj.tolist()
+        if isinstance(obj, (np.number, np.bool_)):
+            return obj.item()
             
-        # Datetime -> String
+        # 5. Datetime -> String
         if isinstance(obj, (datetime.datetime, datetime.date)):
             return obj.isoformat()
             
-        # If it's a dict
+        # 6. Collections (Recursive)
         if isinstance(obj, dict):
             visited.add(obj_id)
-            res = {str(k): serialize_logic(v, visited) for k, v in obj.items()}
+            res = {}
+            for k, v in obj.items():
+                try:
+                    res[str(k)] = serialize_logic(v, visited)
+                except Exception:
+                    res[str(k)] = "[Serialization Error]"
             return res
             
-        # If it's a list/tuple/set
         if isinstance(obj, (list, tuple, set)):
             visited.add(obj_id)
             return [serialize_logic(i, visited) for i in obj]
             
-        # If it's a custom object (Brain, Monad, etc.)
+        # 7. Custom Objects (Recursive via __dict__)
         if hasattr(obj, "__dict__"):
             visited.add(obj_id)
-            # Skip the API client inside bridge to avoid complex serialization issues
-            if obj.__class__.__name__ == "GemmaBridge":
-                return {"__class__": "GemmaBridge", "status": "Bridge Configuration Captured (Client Skipped)"}
+            # Filter out known problematic objects or internal Streamlit/API clients
+            cls_name = obj.__class__.__name__
+            if cls_name == "GemmaBridge":
+                return {"__class__": "GemmaBridge", "status": "Bridge Config Captured"}
             
-            # Try to capture its internal state
-            return {
-                "__class__": obj.__class__.__name__,
-                "data": serialize_logic(obj.__dict__, visited)
-            }
+            try:
+                return {
+                    "__class__": cls_name,
+                    "data": serialize_logic(obj.__dict__, visited)
+                }
+            except Exception:
+                return f"[Object Error: {cls_name}]"
             
         return f"[Unserializable: {type(obj).__name__}]"
 
