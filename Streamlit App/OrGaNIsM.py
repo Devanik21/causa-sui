@@ -15,20 +15,26 @@ base_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(base_dir)
 grandparent_dir = os.path.dirname(parent_dir)
 
-# Define where your custom modules live (The NanoAGI folder)
-# Based on your structure: Streamlit App/NanoAGI/
+# --- THE FIX: PRIORITY REORDERING ---
+# 1. Force the Root Directory (base_dir) to be the ABSOLUTE FIRST priority.
+# This guarantees we load the 'core.py' sitting next to this script,
+# not the old 'ghost' copy inside NanoAGI.
+if base_dir in sys.path:
+    sys.path.remove(base_dir)
+sys.path.insert(0, base_dir)
+
+# 2. Add subfolders as fallback options (Appended to END of list)
+# Only used if a file is NOT found in the root.
 nano_agi_paths = [
-    os.path.join(base_dir, "NanoAGI"),                     # If OrGaNIsM.py is in Streamlit App/
-    os.path.join(parent_dir, "NanoAGI"),                   # If OrGaNIsM.py is deeper
-    os.path.join(grandparent_dir, "Streamlit App", "NanoAGI"), # Fallback
-    base_dir,                                              # Fallback for local dev
+    os.path.join(base_dir, "NanoAGI"),                     
+    os.path.join(parent_dir, "NanoAGI"),                   
+    os.path.join(grandparent_dir, "Streamlit App", "NanoAGI"), 
     parent_dir 
 ]
 
-# Add these to sys.path if missing
 for path in nano_agi_paths:
     if os.path.isdir(path) and path not in sys.path:
-        sys.path.insert(0, path)
+        sys.path.append(path)  # CHANGED: Use append() to keep them lower priority
 
 # ============================================================
 # ☢️ NUCLEAR HOT RELOAD EXORCIST (THE FINAL FIX)
