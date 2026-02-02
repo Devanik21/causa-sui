@@ -352,6 +352,15 @@ def is_stale(obj, class_def):
             # Check if it has the updated meta_step signature (task_idx)
             sig = inspect.signature(obj.meta_step)
             if "task_idx" not in sig.parameters: return True
+            
+            # Hotfix for RuntimeError: Dimension mismatch after growth or scaling
+            if hasattr(obj, "target_projection") and hasattr(obj, "brain"):
+                # Check Hidden Dim (Neurons)
+                if obj.target_projection.out_features != obj.brain.synapse.shape[1]:
+                    return True
+                # Check Input Dim (Thought Width)
+                if obj.target_projection.in_features != obj.brain.synapse.shape[0]:
+                    return True
     except Exception: return True # If inspect fails, assume stale
     return False
 
