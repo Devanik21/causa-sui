@@ -707,7 +707,7 @@ def generate_system_dna_zip():
             "neurons": st.session_state.brain.synapse.shape[1],
             "files_eaten": st.session_state.files_eaten,
             "agency_target": getattr(st.session_state, "target_agency", 0.95),
-            "verdict": st.session_state.get("consciousness_test_results", {}).get("verdict", "No Test Run")
+            "verdict": (st.session_state.get("consciousness_test_results") or {}).get("verdict", "No Test Run")
         }
         zf.writestr("manifest.json", json.dumps(manifest, indent=2))
         
