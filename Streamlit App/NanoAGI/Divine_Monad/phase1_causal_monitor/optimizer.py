@@ -136,8 +136,10 @@ def train_emergence(
     best_partition = partition
     
     # === MAIN TRAINING LOOP ===
-    for epoch in range(config.num_epochs):
-        optimizer.zero_grad()
+    with torch.enable_grad():
+        for epoch in range(config.num_epochs):
+            optimizer.zero_grad()
+        
         
         # 1. Calculate EI values (fully differentiable)
         ei_micro = calc_micro_ei(net, all_inputs)
@@ -258,4 +260,5 @@ if __name__ == "__main__":
     net = results['net']
     print(f"   W1 norm: {net.W1.data.norm().item():.4f}")
     print(f"   W2 norm: {net.W2.data.norm().item():.4f}")
+
 
