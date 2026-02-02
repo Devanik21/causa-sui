@@ -139,68 +139,67 @@ def train_emergence(
     with torch.enable_grad():
         for epoch in range(config.num_epochs):
             optimizer.zero_grad()
-        
-        
-        # 1. Calculate EI values (fully differentiable)
-        ei_micro = calc_micro_ei(net, all_inputs)
-        ei_macro = calc_macro_ei(net, all_inputs, partition)
-        
-        # 2. Emergence score (what we want to MAXIMIZE)
-        emergence_score = ei_macro - ei_micro
-        
-        # 3. Loss = negative emergence (minimize to maximize emergence)
-        loss = -emergence_score
-        
-        # 4. Backprop with gradient clipping for stability
-        loss.backward()
-        torch.nn.utils.clip_grad_norm_(net.parameters(), max_norm=1.0)
-        optimizer.step()
-        
-        # 5. Track best (skip NaN values)
-        score_val = emergence_score.item()
-        if not torch.isnan(emergence_score) and score_val > best_emergence:
-            best_emergence = score_val
-            best_weights = {k: v.clone() for k, v in net.state_dict().items()}
-            if isinstance(partition, LearnablePartition):
-                best_partition = LearnablePartition(
-                    partition.num_micro_states,
-                    partition.num_macro_states
+            
+            # 1. Calculate EI values (fully differentiable)
+            ei_micro = calc_micro_ei(net, all_inputs)
+            ei_macro = calc_macro_ei(net, all_inputs, partition)
+            
+            # 2. Emergence score (what we want to MAXIMIZE)
+            emergence_score = ei_macro - ei_micro
+            
+            # 3. Loss = negative emergence (minimize to maximize emergence)
+            loss = -emergence_score
+            
+            # 4. Backprop with gradient clipping for stability
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(net.parameters(), max_norm=1.0)
+            optimizer.step()
+            
+            # 5. Track best (skip NaN values)
+            score_val = emergence_score.item()
+            if not torch.isnan(emergence_score) and score_val > best_emergence:
+                best_emergence = score_val
+                best_weights = {k: v.clone() for k, v in net.state_dict().items()}
+                if isinstance(partition, LearnablePartition):
+                    best_partition = LearnablePartition(
+                        partition.num_micro_states,
+                        partition.num_macro_states
+                    )
+                    best_partition.partition_map = partition.partition_map.copy()
+            
+            # 6. History
+            history['epochs'].append(epoch)
+            history['ei_micro'].append(ei_micro.item())
+            history['ei_macro'].append(ei_macro.item())
+            history['emergence_score'].append(score_val)
+            
+            # 7. Partition evolution (if enabled)
+            if config.evolve_partition and isinstance(partition, LearnablePartition):
+                if (epoch + 1) % config.partition_evolve_every == 0:
+                    # Try a mutated partition
+                    candidate = partition.mutate(config.partition_mutation_rate)
+                    candidate_ei_macro = calc_macro_ei(net, all_inputs, candidate)
+                    candidate_score = (candidate_ei_macro - ei_micro).item()
+                    
+                    if candidate_score > score_val:
+                        partition = candidate
+                        if verbose:
+                            print(f"     [Epoch {epoch+1}] Partition evolved! New score: {candidate_score:.4f}")
+            
+            # 8. Logging
+            if verbose and (epoch + 1) % config.log_every == 0:
+                print(
+                    f"Epoch {epoch+1}/{config.num_epochs} | "
+                    f"EI_micro: {ei_micro.item():.4f} | "
+                    f"EI_macro: {ei_macro.item():.4f} | "
+                    f"Emergence: {score_val:.4f}"
                 )
-                best_partition.partition_map = partition.partition_map.copy()
-        
-        # 6. History
-        history['epochs'].append(epoch)
-        history['ei_micro'].append(ei_micro.item())
-        history['ei_macro'].append(ei_macro.item())
-        history['emergence_score'].append(score_val)
-        
-        # 7. Partition evolution (if enabled)
-        if config.evolve_partition and isinstance(partition, LearnablePartition):
-            if (epoch + 1) % config.partition_evolve_every == 0:
-                # Try a mutated partition
-                candidate = partition.mutate(config.partition_mutation_rate)
-                candidate_ei_macro = calc_macro_ei(net, all_inputs, candidate)
-                candidate_score = (candidate_ei_macro - ei_micro).item()
-                
-                if candidate_score > score_val:
-                    partition = candidate
-                    if verbose:
-                        print(f"     [Epoch {epoch+1}] Partition evolved! New score: {candidate_score:.4f}")
-        
-        # 8. Logging
-        if verbose and (epoch + 1) % config.log_every == 0:
-            print(
-                f"Epoch {epoch+1}/{config.num_epochs} | "
-                f"EI_micro: {ei_micro.item():.4f} | "
-                f"EI_macro: {ei_macro.item():.4f} | "
-                f"Emergence: {score_val:.4f}"
-            )
-        
-        # 9. Early stopping
-        if early_stop.update(score_val):
-            if verbose:
-                print(f"Early stopping at epoch {epoch+1}")
-            break
+            
+            # 9. Early stopping
+            if early_stop.update(score_val):
+                if verbose:
+                    print(f"Early stopping at epoch {epoch+1}")
+                break
     
     # Restore best weights
     if best_weights is not None:
@@ -260,5 +259,4 @@ if __name__ == "__main__":
     net = results['net']
     print(f"   W1 norm: {net.W1.data.norm().item():.4f}")
     print(f"   W2 norm: {net.W2.data.norm().item():.4f}")
-
 
