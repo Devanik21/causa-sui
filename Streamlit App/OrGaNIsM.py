@@ -5,6 +5,9 @@ import torch
 import time
 import datetime
 import io
+import json
+import zipfile
+import numpy as np
 
 # ============================================================
 # 🧬 PATH SETUP (CRITICAL: MUST RUN FIRST)
@@ -607,6 +610,107 @@ def trigger_dream():
         dream_bytes.append(byte_val)
     
     return bytes(dream_bytes).decode('utf-8', errors='ignore')
+
+def generate_system_dna_zip():
+    """Generates a comprehensive JSON-based ZIP report of the entire application state."""
+    
+    def serialize_logic(obj, visited=None):
+        if visited is None: visited = set()
+        
+        # Prevent infinite recursion for recursive objects
+        obj_id = id(obj)
+        if obj_id in visited: return "[Circular Reference]"
+        
+        # Basic types
+        if isinstance(obj, (int, float, str, bool, type(None))):
+            return obj
+            
+        # Torch Tensors -> List
+        if hasattr(obj, "detach") and hasattr(obj, "cpu") and hasattr(obj, "tolist"):
+            return obj.detach().cpu().tolist()
+            
+        # Numpy arrays
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+            
+        # Datetime -> String
+        if isinstance(obj, (datetime.datetime, datetime.date)):
+            return obj.isoformat()
+            
+        # If it's a dict
+        if isinstance(obj, dict):
+            visited.add(obj_id)
+            res = {str(k): serialize_logic(v, visited) for k, v in obj.items()}
+            return res
+            
+        # If it's a list/tuple/set
+        if isinstance(obj, (list, tuple, set)):
+            visited.add(obj_id)
+            return [serialize_logic(i, visited) for i in obj]
+            
+        # If it's a custom object (Brain, Monad, etc.)
+        if hasattr(obj, "__dict__"):
+            visited.add(obj_id)
+            # Skip the API client inside bridge to avoid complex serialization issues
+            if obj.__class__.__name__ == "GemmaBridge":
+                return {"__class__": "GemmaBridge", "status": "Bridge Configuration Captured (Client Skipped)"}
+            
+            # Try to capture its internal state
+            return {
+                "__class__": obj.__class__.__name__,
+                "data": serialize_logic(obj.__dict__, visited)
+            }
+            
+        return f"[Unserializable: {type(obj).__name__}]"
+
+    # Capture target state keys
+    dna_package = {
+        "report_metadata": {
+            "timestamp": datetime.datetime.now().isoformat(),
+            "app_version": "1.0.0-DNA",
+            "environment": str(sys.version)
+        }
+    }
+    
+    for key in st.session_state.keys():
+        # Specifically target our important state keys
+        dna_package[key] = serialize_logic(st.session_state[key])
+
+    # Create the JSON
+    json_data = json.dumps(dna_package, indent=2)
+    
+    # Create ZIP in memory
+    zip_buf = io.BytesIO()
+    with zipfile.ZipFile(zip_buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("nano_daemon_system_dna.json", json_data)
+        
+        # Add a quick-info manifest
+        manifest = {
+            "timestamp": datetime.datetime.now().isoformat(),
+            "neurons": st.session_state.brain.synapse.shape[1],
+            "files_eaten": st.session_state.files_eaten,
+            "agency_target": getattr(st.session_state, "target_agency", 0.95),
+            "verdict": st.session_state.get("consciousness_test_results", {}).get("verdict", "No Test Run")
+        }
+        zf.writestr("manifest.json", json.dumps(manifest, indent=2))
+        
+    return zip_buf.getvalue()
+
+@st.fragment
+def fragment_system_management():
+    st.markdown("## 💾 System Management")
+    st.info("Download the complete 'DNA' of the organism including all weights (JSON), metrics, and histories.")
+    
+    zip_data = generate_system_dna_zip()
+    
+    st.download_button(
+        label="🧬 Download System DNA (.zip)",
+        data=zip_data,
+        file_name=f"nano_daemon_dna_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.zip",
+        mime="application/zip",
+        use_container_width=True,
+        help="Packages all synaptic weights, histories, and metrics into a compressed JSON report."
+    )
 
 @st.fragment(run_every=5)  # Live Dashboard
 def fragment_monad_dashboard():
@@ -3315,6 +3419,8 @@ with st.sidebar:
     fragment_sidebar_feeding()
     st.divider()
     fragment_sidebar_controls()
+    st.divider()
+    fragment_system_management()
     st.divider()
     if bridge.client: st.success("🟢 Hybrid Intelligence Active")
     else: st.warning("🟡 Organic Mode Active")
