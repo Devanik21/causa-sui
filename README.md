@@ -1,5 +1,5 @@
 # The Causa Sui: Real Differentiable Causal Emergence (Erik Hoel) for Advanced Self-Aware Neural Architectures
-
+ 
 **Author:** Devanik  
 **Affiliation:** B.Tech ECE '26, National Institute of Technology Agartala  
 **Fellowships:** Samsung Convergence Software Fellowship (Grade I), Indian Institute of Science  
