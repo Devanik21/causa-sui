@@ -1,0 +1,3 @@
+# Configuration for Causal Emergence Experiments
+scale: macro
+threshold: 0.8
