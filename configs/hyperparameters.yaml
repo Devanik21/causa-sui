@@ -1,0 +1,3 @@
+# Default Hyperparameters
+batch_size: 32
+epochs: 100
